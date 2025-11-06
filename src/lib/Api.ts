@@ -1,5 +1,5 @@
 export const fetchEntries = async ({ date_from, date_to }) => {
-  const response = await fetch('http://18.171.58.192/api/entries', {
+  const response = await fetch('https://hitec-backend.intelleqt.ai/api/entries', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -1,0 +1,42 @@
+-- Insert missing employees from the final check list
+INSERT INTO employees (
+    first_name, last_name, department, atg_clock_number, employee_number, 
+    hourly_rate, employment_type, employee_type, is_active, factory
+) VALUES 
+-- Missing employees from final check
+('XOLISWA', 'SAJINI', 'UNIT 1', '23', 'EMP0023', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('PHINDIWE', 'ZINDLO', 'UNIT 1', '24', 'EMP0024', 22.97, 'full-time', 'permanent', true, 'Main Factory'),
+('CHWAYITA', 'MATSHINI', 'UNIT 1', '26', 'EMP0026', 18.54, 'full-time', 'permanent', true, 'Main Factory'),
+('MIRANDA', 'MKENTANE', 'CUTTING', '27', 'EMP0027', 18.54, 'full-time', 'permanent', true, 'Main Factory'),
+('SHANNAAZ', 'DESSI', 'CUTTING', '28', 'EMP0028', 31.32, 'full-time', 'permanent', true, 'Main Factory'),
+('KAWA', 'MKHUSELI', 'REEL TO REEL', '34', 'EMP0034', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('SINALO', 'MPONDO', 'CUTTING', '36', 'EMP0036', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('NOLUSINDISO', 'MASAKAZI', 'UNIT 3', '38', 'EMP0038', 14.83, 'full-time', 'permanent', true, 'Main Factory'),
+('NICHOLAS', 'TUTANI', 'GENERAL', '39', 'EMP0039', 20.00, 'full-time', 'permanent', true, 'Main Factory'),
+('FIKISWA', 'MANKQEYI', 'UNIT 1', '40', 'EMP0040', 14.83, 'full-time', 'permanent', true, 'Main Factory'),
+('LINDEKA', 'RASONTI', 'CUTTING', '41', 'EMP0041', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('SNAKO', 'YEKENI', 'UNIT 6', '42', 'EMP0042', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('THEMBA', 'BEKELEPI', 'UNIT 1', '45', 'EMP0045', 24.01, 'full-time', 'permanent', true, 'Main Factory'),
+('MFEZEKO', 'GANYA', 'BAILING', '47', 'EMP0047', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('MZWAKHIWE', 'FUDUMELE', 'REEL TO REEL', '52', 'EMP0052', 14.83, 'full-time', 'permanent', true, 'Main Factory'),
+('LUKANYISO', 'ZAZI', 'UNIT 1', '55', 'EMP0055', 18.54, 'full-time', 'permanent', true, 'Main Factory'),
+('OKUHLE', 'SHUMAYELE', 'UNIT 1', '56', 'EMP0056', 18.54, 'full-time', 'permanent', true, 'Main Factory'),
+('ZIYANDA', 'GIDI', 'UNIT 1', '57', 'EMP0057', 14.83, 'full-time', 'permanent', true, 'Main Factory'),
+('BUSISIWE', 'KELI', 'CUTTING', '58', 'EMP0058', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('FUNDISWA', 'DAYI', 'UNIT 6', '60', 'EMP0060', 14.83, 'full-time', 'permanent', true, 'Main Factory'),
+('PHILASANDE', 'GWIJA', 'UNIT 1', '82', 'EMP0082', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('IBANATHI', 'IEBE', 'UNIT 6', '111', 'EMP0111', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('THABO', 'NTAKA', 'EXTRUDER', '199', 'EMP0199', 15.00, 'full-time', 'permanent', true, 'Main Factory'),
+('SINAWO', 'RAJOALE', 'EXTRUDER', '200', 'EMP0200', 15.00, 'full-time', 'permanent', true, 'Main Factory'),
+('BHASO', 'JUMBA', 'EXTRUDER', '203', 'EMP0203', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('AYAPHA', 'MKHWELO', 'EXTRUDER', '211', 'EMP0211', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('ANELISA', 'TENGE', 'EXTRUDER', '215', 'EMP0215', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('SIPHUMZI', 'NTSHUNTSHE', 'EXTRUDER', '216', 'EMP0216', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('THANDAZWA', 'MAGQWETA', 'EXTRUDER', '217', 'EMP0217', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('THOBELA', 'NGETU', 'EXTRUDER', '228', 'EMP0228', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('ABONGILE', 'NTLIKITHI', 'EXTRUDER', '230', 'EMP0230', 20.88, 'full-time', 'permanent', true, 'Main Factory'),
+('SIPHAMANDLA', 'MFIHLO', 'EXTRUDER', '241', 'EMP0241', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('WANDISILE', 'FANI', 'EXTRUDER', '242', 'EMP0242', 28.79, 'full-time', 'permanent', true, 'Main Factory'),
+('NWABISA', 'NTSOMI', 'CUTTING', '244', 'EMP0244', 31.32, 'full-time', 'permanent', true, 'Main Factory'),
+('SIYABULELA', 'SISPENI', 'EXTRUDER', '245', 'EMP0245', 28.79, 'full-time', 'permanent', true, 'Main Factory')
+ON CONFLICT (atg_clock_number) DO NOTHING;

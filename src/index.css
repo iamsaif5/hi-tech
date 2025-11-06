@@ -1,0 +1,286 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Hitec ERP Color System */
+    --background: 220 13% 98%;
+    --foreground: 210 11% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 11% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 11% 15%;
+
+    /* Primary: Lighter Blue for buttons */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Brand Navy #1F2937 */
+    --secondary: 220 39% 17%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Accent Light: Brand Light Gray #F4F5F7 */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 39% 17%;
+
+    /* Accent Light: Brand Light Gray #F4F5F7 */
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 39% 17%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 14% 91%;
+    --input: 220 14% 91%;
+    --ring: 206 100% 40%;
+
+    --radius: 0.375rem;
+
+    --sidebar-background: 234 94% 33%;  /* #051CA6 - Custom brand blue */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 234 94% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 234 94% 38%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 234 94% 38%;
+    --sidebar-ring: 234 94% 33%;
+
+    /* HITEC ERP Brand Colors - Updated to match brand palette */
+    --hitec-primary: 224 76% 40%;         /* Darker Brand Blue */
+    --hitec-secondary: 220 39% 17%;       /* #1F2937 - Brand Navy */
+    --hitec-accent-light: 220 14% 96%;    /* #F4F5F7 - Brand Light Gray */
+    --hitec-highlight: 25 95% 53%;        /* #F97316 - Brand Orange */
+    --hitec-success: 162 83% 40%;         /* #10B981 - Brand Green */
+
+    /* Chart Colors */
+    --chart-1: 217 91% 60%;               /* Primary blue */
+    --chart-2: 162 83% 40%;               /* Success green */
+    --chart-3: 25 95% 53%;                /* Orange */
+    --chart-4: 251 91% 68%;               /* Purple */
+    --chart-5: 349 89% 60%;               /* Red */
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 224 71% 4%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 216 34% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 216 34% 17%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Chart Colors - Dark Mode */
+    --chart-1: 217 91% 60%;
+    --chart-2: 162 83% 40%;
+    --chart-3: 25 95% 53%;
+    --chart-4: 251 91% 68%;
+    --chart-5: 349 89% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground text-sm;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    line-height: 1.4;
+  }
+
+  h1 {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  h2 {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  h3 {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  h4 {
+    @apply text-xs font-medium text-foreground;
+  }
+
+  p {
+    @apply text-xs text-muted-foreground;
+  }
+}
+
+@layer components {
+  /* Hitec ERP Data Card Component - Compact & Professional */
+  .data-card {
+    @apply bg-card border border-border rounded-md shadow-sm hover:shadow transition-shadow p-3 min-w-0;
+  }
+
+  .data-card h3 {
+    @apply text-xs font-medium text-muted-foreground mb-1;
+  }
+
+  .data-card p {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .data-card .subtitle {
+    @apply text-xs text-muted-foreground mt-1;
+  }
+
+  /* Page Layout Components - Tighter Spacing */
+  .page-container {
+    @apply px-4 md:px-6 space-y-4;
+  }
+
+  /* Professional Table Styling */
+  .hitec-table {
+    @apply w-full border-collapse;
+  }
+
+  .hitec-table thead {
+    @apply bg-accent;
+  }
+
+  .hitec-table th {
+    @apply px-3 py-2 text-left text-xs font-medium text-foreground border-b border-border;
+  }
+
+  .hitec-table td {
+    @apply px-3 py-2 text-xs text-foreground border-b border-border;
+  }
+
+  .hitec-table tbody tr:hover {
+    @apply bg-muted/30;
+  }
+
+  /* Clean Line Tab Styling - New Format */
+  .clean-tabs {
+    @apply w-full;
+    position: relative;
+  }
+
+  .clean-tabs::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: hsl(var(--border));
+    z-index: 1;
+  }
+
+  .clean-tabs [data-orientation="horizontal"] {
+    @apply bg-transparent pb-0 h-auto;
+    position: relative;
+    z-index: 2;
+  }
+
+  .clean-tabs [role="tab"] {
+    @apply bg-transparent border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground rounded-none h-auto relative;
+    @apply data-[state=active]:border-hitec-highlight data-[state=active]:text-foreground data-[state=active]:bg-transparent;
+    z-index: 3;
+  }
+
+  .clean-tabs [role="tab"]:hover {
+    @apply bg-transparent;
+  }
+
+  /* Professional Card Headers */
+  .hitec-card-header {
+    @apply px-4 py-3 border-b border-border bg-accent/50;
+  }
+
+  .hitec-card-header h3 {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .hitec-card-content {
+    @apply p-4;
+  }
+
+  /* Compact Button Styles */
+  .btn-hitec-primary {
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground text-xs px-3 py-1.5;
+  }
+
+  .btn-hitec-secondary {
+    @apply bg-secondary hover:bg-secondary/90 text-secondary-foreground text-xs px-3 py-1.5;
+  }
+
+  /* Status Indicators - Using Brand Palette */
+  .status-active {
+    @apply bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-sm;
+  }
+
+  .status-complete {
+    @apply bg-hitec-success text-white text-xs px-2 py-0.5 rounded-sm;
+  }
+
+  .status-warning {
+    @apply bg-hitec-highlight text-white text-xs px-2 py-0.5 rounded-sm;
+  }
+
+  .status-highlight {
+    @apply bg-hitec-highlight text-white text-xs px-2 py-0.5 rounded-sm;
+  }
+
+  .status-neutral {
+    @apply bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-sm;
+  }
+
+  /* Brand Color Utilities for Consistent Usage */
+  .bg-brand-success {
+    @apply bg-hitec-success text-white;
+  }
+
+  .bg-brand-success-light {
+    @apply bg-hitec-success/10 text-hitec-success;
+  }
+
+  .text-brand-success {
+    @apply text-hitec-success;
+  }
+
+  .bg-brand-primary {
+    @apply bg-hitec-primary text-white;
+  }
+
+  .bg-brand-primary-light {
+    @apply bg-hitec-primary/10 text-hitec-primary;
+  }
+}

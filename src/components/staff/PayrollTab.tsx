@@ -8,6 +8,8 @@ import { DollarSign, Calendar, FileText, Play, Eye, Download, Filter } from 'luc
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
+import { fetchEntries } from '@/lib/Api';
+import { useQuery } from '@tanstack/react-query';
 
 interface PayrollTabProps {
   onRunPayroll: () => void;
@@ -72,6 +74,12 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
 
   const currentPeriod = calculatePayPeriods();
 
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['entries', currentPeriod?.startDate, currentPeriod?.endDate],
+    queryFn: () => fetchEntries({ date_from: currentPeriod?.startDate, date_to: currentPeriod?.endDate }),
+    enabled: !!currentPeriod?.startDate && !!currentPeriod?.endDate,
+  });
+
   useEffect(() => {
     initializePayrollData();
   }, []);
@@ -129,8 +137,6 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     const dates = dateRange.map(r => r.date);
     const earliestDate = dates[0];
     const latestDate = dates[dates.length - 1];
-
-    console.log('Time records date range:', earliestDate, 'to', latestDate);
 
     const formatDate = (dateStr: string) => {
       const date = new Date(dateStr);
@@ -447,7 +453,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
       return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
     });
 
-  console.log('Current Payroll Period', filteredPayrolls);
+  console.log('Current Payroll Period', data);
 
   const currentDraft = payrollHistory.find(p => p.id === 'current-period') || currentPeriodCalculations;
 
@@ -480,7 +486,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Total Employees</div>
-                  <div className="font-medium">{currentDraft.total_employees || 0} staff</div>
+                  <div className="font-medium">{data?.items?.length || 0} staff</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Estimated Cost</div>
@@ -501,7 +507,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                       <div className="text-sm text-gray-600">Permanent Staff</div>
                       <div className="font-medium text-blue-700">R0.00</div>
                     </div>
-                    <div className="text-xs text-gray-500">0 employees</div>
+                    <div className="text-xs text-gray-500">{data?.items?.length || 0} employees</div>
                   </div>
                   <div className="bg-white rounded-lg p-3 border">
                     <div className="flex items-center justify-between">

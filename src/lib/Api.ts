@@ -1,18 +1,30 @@
-export const fetchEntries = async ({ date_from, date_to }) => {
+export const fetchEntries = async ({ date_from, date_to, selectedDate }) => {
+  const body = selectedDate
+    ? {
+        clock_number: '',
+        date: selectedDate,
+        date_from: '',
+        date_to: '',
+        timezone: '',
+        limit: 100,
+        offset: 0,
+      }
+    : {
+        clock_number: '',
+        date: '',
+        date_from,
+        date_to,
+        timezone: '',
+        limit: 100,
+        offset: 0,
+      };
+
   const response = await fetch('https://hitec-backend.intelleqt.ai/api/entries', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      clock_number: '',
-      date: '',
-      date_from,
-      date_to,
-      timezone: '',
-      limit: 100,
-      offset: 0,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

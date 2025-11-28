@@ -38,8 +38,8 @@ const TimeAttendanceTab = () => {
   const [timeOffRequests, setTimeOffRequests] = useState<any[]>([]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['entries', timeOffRequests?.startDate, timeOffRequests?.endDate],
-    queryFn: () => fetchEntries({ date_from: timeOffRequests?.startDate, date_to: timeOffRequests?.endDate }),
+    queryKey: ['entries', timeOffRequests?.startDate, timeOffRequests?.endDate, selectedDate],
+    queryFn: () => fetchEntries({ date_from: timeOffRequests?.startDate, date_to: timeOffRequests?.endDate, selectedDate }),
     enabled: !!timeOffRequests?.startDate && !!timeOffRequests?.endDate,
   });
 
@@ -187,15 +187,17 @@ const TimeAttendanceTab = () => {
   }, []); // Only run once on mount
 
   // Update selected date when period changes
-  useEffect(() => {
-    if (selectedPeriod && periodDays.length > 0) {
-      // Set to first day of the selected period
-      const firstDayOfPeriod = periodDays[0]?.date;
-      if (firstDayOfPeriod) {
-        setSelectedDate(firstDayOfPeriod);
-      }
-    }
-  }, [selectedPeriod]); // Run when selectedPeriod changes
+  // useEffect(() => {
+  //   if (selectedPeriod && periodDays.length > 0) {
+  //     // Set to first day of the selected period
+  //     const firstDayOfPeriod = periodDays[0]?.date;
+  //     if (firstDayOfPeriod) {
+  //       setSelectedDate(firstDayOfPeriod);
+  //     }
+  //   }
+  // }, [selectedPeriod]); // Run when selectedPeriod changes
+
+  console.log(selectedDate);
 
   // Fetch employees and time records
   useEffect(() => {

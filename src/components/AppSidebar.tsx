@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Sidebar,
@@ -9,28 +8,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { 
-  BarChart3, 
-  ShoppingCart, 
-  Factory, 
-  Shield, 
-  Package, 
-  Users, 
-  TrendingUp, 
-  Settings,
-  Building
-} from 'lucide-react';
+import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building } from 'lucide-react';
 
 const AppSidebar = ({ activeView, setActiveView }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'crm', label: 'Clients', icon: Building },
-    { id: 'orders', label: 'Orders', icon: ShoppingCart },
+    // { id: 'crm', label: 'Clients', icon: Building },
+    // { id: 'orders', label: 'Orders', icon: ShoppingCart },
     { id: 'staff', label: 'Staff', icon: Users },
-    { id: 'operations', label: 'Operations', icon: Factory },
-    { id: 'finance', label: 'Finance', icon: TrendingUp },
-    { id: 'reports', label: 'Reporting', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    // { id: 'operations', label: 'Operations', icon: Factory },
+    // { id: 'finance', label: 'Finance', icon: TrendingUp },
+    // { id: 'reports', label: 'Reporting', icon: BarChart3 },
+    // { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
@@ -42,7 +31,7 @@ const AppSidebar = ({ activeView, setActiveView }) => {
         <SidebarGroup>
           <SidebarGroupContent className="px-4 py-2">
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {menuItems.map(item => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     onClick={() => setActiveView(item.id)}

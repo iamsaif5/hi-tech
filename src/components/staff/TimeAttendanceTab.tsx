@@ -615,7 +615,7 @@ const TimeAttendanceTab = () => {
                           </Badge>
                         </td>
                         <td className="py-2 px-4 text-xs">
-                          {staff?.raw_payload?.timeSpend ? (staff.raw_payload.timeSpend / (1000 * 60 * 60)).toFixed(2) + ' hrs' : '—'}
+                          {staff?.raw_payload?.timeSpend ? Math.round(staff.raw_payload.timeSpend / (1000 * 60 * 60)) + ' hrs' : '—'}
                         </td>
 
                         <td className="py-2 px-4 text-xs">{staff.clock_number}</td>

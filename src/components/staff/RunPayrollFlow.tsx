@@ -52,8 +52,8 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   const [payRollInfo, setPayRollInfo] = useState<any>([]);
   const [availablePeriods, setAvailablePeriods] = useState<any[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
-  const [selectedStaffType, setSelectedStaffType] = useState<string>('all');
-  const [selectedCompany, setSelectedCompany] = useState<string>('all');
+  const [selectedStaffType, setSelectedStaffType] = useState<string>('permanent');
+  const [selectedCompany, setSelectedCompany] = useState<string>('hitec');
   const [payPeriod, setPayPeriod] = useState({
     start_date: '',
     end_date: '',
@@ -71,6 +71,8 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     queryFn: () => fetchEntries({ date_from: payPeriod?.start_date, date_to: payPeriod?.end_date }),
     enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
   });
+  
+  console.log("data", data)
 
   const { data: employees, isLoading } = useEmployees();
 
@@ -116,7 +118,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     };
 
     // Previous, current, next
-    // pushPeriod(1, addDays(basePeriodStart, (periodsPassed - 1) * 14), 'complete');
+    pushPeriod(1, addDays(basePeriodStart, (periodsPassed - 1) * 14), 'complete');
     pushPeriod(2, addDays(basePeriodStart, periodsPassed * 14), 'current');
     pushPeriod(3, addDays(basePeriodStart, (periodsPassed + 1) * 14), 'upcoming');
 
@@ -668,11 +670,11 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
-                <TableHead>Regular Pay</TableHead>
-                <TableHead>Overtime Pay</TableHead>
+                <TableHead>Capped hrs per shift</TableHead>
+                <TableHead>Rate p/hr</TableHead>
                 <TableHead>Bonus</TableHead>
-                <TableHead>Gross Pay</TableHead>
-                <TableHead>Loan Deductions</TableHead>
+                <TableHead>Total worked hours</TableHead>
+                <TableHead>Total off weekend hours</TableHead>
                 <TableHead>Other Deductions</TableHead>
                 <TableHead>Net Pay</TableHead>
               </TableRow>

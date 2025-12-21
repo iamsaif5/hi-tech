@@ -83,6 +83,15 @@ const TimeAttendanceTab = () => {
       const day = date.getDate();
       return `${month} ${day}`;
     };
+    
+    periods.push({
+      id: 0,
+      dates: `Dec 5-Dec 18`,
+      status: 'complete',
+      days: 14,
+      startDate: '2025-12-05',
+      endDate: '2025-12-18',
+    });
 
     periods.push({
       id: 1,
@@ -115,6 +124,8 @@ const TimeAttendanceTab = () => {
   };
 
   const payPeriods = calculatePayPeriods();
+  
+  console.log("payPeriods", payPeriods)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -548,7 +559,7 @@ const TimeAttendanceTab = () => {
 
         {/* Right - Fortnightly Periods (same height as day blocks) */}
         <div className="flex gap-1">
-          {payPeriods.slice(0, 3).map(period => (
+          {payPeriods.slice(0, 4).map(period => (
             <div
               key={period.id}
               onClick={() => setSelectedPeriod(period.id)}

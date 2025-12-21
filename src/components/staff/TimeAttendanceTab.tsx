@@ -86,11 +86,11 @@ const TimeAttendanceTab = () => {
     
     periods.push({
       id: 0,
-      dates: `Dec 5-Dec 18`,
+      dates: `Nov 5-Nov 18`,
       status: 'complete',
       days: 14,
-      startDate: '2025-12-05',
-      endDate: '2025-12-18',
+      startDate: '2025-11-05',
+      endDate: '2025-11-18',
     });
 
     periods.push({

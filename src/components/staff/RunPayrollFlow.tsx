@@ -16,47 +16,8 @@ import { fetchEntries, fetchHours } from '@/lib/Api';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
-const titleStyle = {
-  font: { bold: true, sz: 14 },
-  alignment: { horizontal: "center", vertical: "center" }
-};
 
-const subtitleStyle = {
-  font: { bold: true },
-  alignment: { horizontal: "center" }
-};
 
-const headerStyle = {
-  font: { bold: true, color: { rgb: "FFFFFF" } },
-  fill: { fgColor: { rgb: "4F81BD" } },
-  alignment: { horizontal: "center", vertical: "center" },
-  border: {
-    top: { style: "thin" },
-    bottom: { style: "thin" },
-    left: { style: "thin" },
-    right: { style: "thin" }
-  }
-};
-
-const cellStyle = {
-  border: {
-    top: { style: "thin" },
-    bottom: { style: "thin" },
-    left: { style: "thin" },
-    right: { style: "thin" }
-  }
-};
-
-const totalStyle = {
-  font: { bold: true },
-  fill: { fgColor: { rgb: "D9E1F2" } },
-  border: {
-    top: { style: "thin" },
-    bottom: { style: "thin" },
-    left: { style: "thin" },
-    right: { style: "thin" }
-  }
-};
 
 
 interface RunPayrollFlowProps {
@@ -126,7 +87,6 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
   });
   
-  console.log("data", data)
 
   const { data: employees, isLoading } = useEmployees();
 
@@ -400,7 +360,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           // Calculate Total Worked Hours (Capped / Min Guaranteed)
           if (empHoursData.hours_of_each_day && empHoursData.hours_of_each_day.hours) {
               totalWorkedHours = empHoursData.hours_of_each_day.hours.reduce((sum: number, hours: number) => {
-                  return sum + Math.max(hours, cap);
+                  return sum + Math.min(hours, cap);
               }, 0);
           }
            else if (empHoursData.total_hours) {
@@ -411,7 +371,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
           // Calculate Weekend Hours (Capped / Min Guaranteed)
           if (empHoursData.weekend_hours && empHoursData.weekend_hours.hours) {
               totalWeekendHours = empHoursData.weekend_hours.hours.reduce((sum: number, hours: number) => {
-                   return sum + Math.max(hours, cap);
+                   return sum + Math.min(hours, cap);
               }, 0);
           }
            else if (empHoursData.total_weekend_hours) {

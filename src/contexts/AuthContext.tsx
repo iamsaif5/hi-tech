@@ -180,7 +180,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
   };
 
-  console.log('AuthProvider: Current state - user:', user?.id, 'profile:', profile?.id, 'loading:', loading);
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

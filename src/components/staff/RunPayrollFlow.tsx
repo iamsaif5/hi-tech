@@ -12,7 +12,52 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Users, Clock, Calendar, DollarSign, CheckCircle, Download, Mail } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchEntries } from '@/lib/Api';
+import { fetchEntries, fetchHours } from '@/lib/Api';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+
+const titleStyle = {
+  font: { bold: true, sz: 14 },
+  alignment: { horizontal: "center", vertical: "center" }
+};
+
+const subtitleStyle = {
+  font: { bold: true },
+  alignment: { horizontal: "center" }
+};
+
+const headerStyle = {
+  font: { bold: true, color: { rgb: "FFFFFF" } },
+  fill: { fgColor: { rgb: "4F81BD" } },
+  alignment: { horizontal: "center", vertical: "center" },
+  border: {
+    top: { style: "thin" },
+    bottom: { style: "thin" },
+    left: { style: "thin" },
+    right: { style: "thin" }
+  }
+};
+
+const cellStyle = {
+  border: {
+    top: { style: "thin" },
+    bottom: { style: "thin" },
+    left: { style: "thin" },
+    right: { style: "thin" }
+  }
+};
+
+const totalStyle = {
+  font: { bold: true },
+  fill: { fgColor: { rgb: "D9E1F2" } },
+  border: {
+    top: { style: "thin" },
+    bottom: { style: "thin" },
+    left: { style: "thin" },
+    right: { style: "thin" }
+  }
+};
+
 
 interface RunPayrollFlowProps {
   onBack: () => void;
@@ -46,7 +91,7 @@ interface PayrollCalculation {
 
 const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<any[]>([]);
   const [timeRecords, setTimeRecords] = useState<TimeRecord[]>([]);
   const [payrollCalculations, setPayrollCalculations] = useState<PayrollCalculation[]>([]);
   const [payRollInfo, setPayRollInfo] = useState<any>([]);
@@ -68,8 +113,17 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     refetch,
   } = useQuery({
     queryKey: ['entries', payPeriod?.start_date, payPeriod?.end_date],
-    queryFn: () => fetchEntries({ date_from: payPeriod?.start_date, date_to: payPeriod?.end_date }),
+    queryFn: () => fetchEntries({ date_from: payPeriod?.start_date, date_to: payPeriod?.end_date, selectedDate: null }),
     enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
+  });
+  
+  const {
+      data: hoursData,
+      isLoading: hoursLoading,
+  } = useQuery({
+      queryKey: ['hours', payPeriod?.start_date, payPeriod?.end_date],
+      queryFn: () => fetchHours({ date_from: payPeriod?.start_date, date_to: payPeriod?.end_date }),
+      enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
   });
   
   console.log("data", data)
@@ -163,9 +217,8 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   const steps = [
     { id: 1, title: 'Select Period & Options', icon: Calendar },
     { id: 2, title: 'Select Staff', icon: Users },
-    { id: 3, title: 'Review Hours', icon: Clock },
-    { id: 4, title: 'Calculate Pay', icon: DollarSign },
-    { id: 5, title: 'Confirm & Process', icon: CheckCircle },
+    { id: 3, title: 'Calculate Pay', icon: DollarSign },
+    { id: 4, title: 'Confirm & Process', icon: CheckCircle },
   ];
 
   // Filter employees based on staff type and time records
@@ -195,7 +248,15 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       })
       .map(emp => {
         const matchedData = dataMap?.[emp.atg_clock_number];
-        const timeSpend = matchedData ? (matchedData.raw_payload?.timeSpend || 0) / (1000 * 60 * 60) : 0;
+        // Try to find in hoursData first if available, else fall back to entries data
+        const hoursItem = hoursData?.items?.find((item: any) => item.clock_number === emp.atg_clock_number);
+        
+        let timeSpend = 0;
+        if (hoursItem) {
+             timeSpend = hoursItem.total_hours; 
+        } else if (matchedData) {
+             timeSpend = (matchedData.raw_payload?.timeSpend || 0) / (1000 * 60 * 60);
+        }
 
         return {
           ...emp,
@@ -217,7 +278,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
         setSelectedEmployees(filteredEmployees);
       }
     }
-  }, [payPeriod, timeRecords, selectedStaffType, selectedCompany]);
+  }, [payPeriod, timeRecords, selectedStaffType, selectedCompany, hoursData]);
 
   // Load time records for the selected period
   useEffect(() => {
@@ -322,22 +383,58 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
   };
 
   useEffect(() => {
+
     const enrichedEmployees = selectedEmployees.map(emp => {
       const bonus_pay = 0;
-      const gross_pay = (emp.timeSpend || 0) * (emp.hourly_rate || 0);
-      const net_pay = gross_pay;
+      
+      // Find matching hours data
+      const empHoursData = hoursData?.items?.find((item: any) => item.clock_number === emp.atg_clock_number);
+      
+      let totalWorkedHours = 0;
+      let totalWeekendHours = 0;
+      
+      // Capped hours logic
+      if (empHoursData) {
+          const cap = emp.capped_hours || 11; // Default to 11 if not set
+          
+          // Calculate Total Worked Hours (Capped / Min Guaranteed)
+          if (empHoursData.hours_of_each_day && empHoursData.hours_of_each_day.hours) {
+              totalWorkedHours = empHoursData.hours_of_each_day.hours.reduce((sum: number, hours: number) => {
+                  return sum + Math.max(hours, cap);
+              }, 0);
+          }
+           else if (empHoursData.total_hours) {
+               // Fallback
+               totalWorkedHours = empHoursData.total_hours;
+          }
+
+          // Calculate Weekend Hours (Capped / Min Guaranteed)
+          if (empHoursData.weekend_hours && empHoursData.weekend_hours.hours) {
+              totalWeekendHours = empHoursData.weekend_hours.hours.reduce((sum: number, hours: number) => {
+                   return sum + Math.max(hours, cap);
+              }, 0);
+          }
+           else if (empHoursData.total_weekend_hours) {
+              totalWeekendHours = empHoursData.total_weekend_hours;
+          }
+      }
+
+      const totalPaidHours = Math.max(0, totalWorkedHours - totalWeekendHours);
+      const gross_pay = (totalPaidHours * (emp.hourly_rate || 0)); // Initial gross pay without bonus/deductions
+
       return {
         ...emp,
         bonus_pay,
-        gross_pay,
-        net_pay,
+        gross_pay, // This will be recalculated in updateBonus/Loans to include additions/deductions
+        net_pay: gross_pay,
+        total_worked_hours: totalWorkedHours,
+        total_weekend_hours: totalWeekendHours,
+        total_paid_hours: totalPaidHours
       };
     });
 
     setPayRollInfo(enrichedEmployees);
-  }, [selectedEmployees, payPeriod]);
-
-  console.log('selectedEmployees', selectedEmployees);
+  }, [selectedEmployees, payPeriod, hoursData]);
 
   const renderStep1 = () => (
     <div className="space-y-6">
@@ -468,6 +565,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       </div>
     </div>
   );
+  
 
   const renderStep2 = () => (
     <div className="space-y-4">
@@ -535,7 +633,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                           {employee.first_name} {employee.last_name}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {employee.atg_clock_number} • {employee.timeSpend.toFixed(1)}h worked
+                          {employee.atg_clock_number} • {Math.round(employee?.timeSpend || 0)}h worked
                           {loanDeductions > 0 && <span className="text-orange-600 ml-2">• R{loanDeductions.toFixed(2)} loan</span>}
                         </div>
                       </div>
@@ -545,6 +643,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                     <TableCell>
                       <Badge className="capitalize" variant="outline">
                         {employee.employee_type}
+                        {employee.capped_hours && ` • Cap: ${employee.capped_hours}`}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -618,12 +717,43 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
     setPayRollInfo(prev =>
       prev.map(calc => {
         if (calc.atg_clock_number == atgClockNumber) {
-          const newGrossPay = calc?.timeSpend * calc.hourly_rate + bonusAmount;
+          const newGrossPay = (calc.total_paid_hours * calc.hourly_rate) + bonusAmount;
           return {
             ...calc,
             bonus_pay: bonusAmount,
             gross_pay: newGrossPay,
-            net_pay: newGrossPay,
+            net_pay: newGrossPay - (calc.loan_deductions || 0) - (calc.other_deductions || 0),
+          };
+        }
+        return calc;
+      })
+    );
+  };
+  
+    // Update bonus for employee
+  const updateLoans = (atgClockNumber: string, loanAmount: number) => {
+    setPayRollInfo(prev =>
+      prev.map(calc => {
+        if (calc.atg_clock_number == atgClockNumber) {
+          return {
+            ...calc,
+            loan_deductions: loanAmount,
+            net_pay: calc.gross_pay - (calc.other_deductions || 0) - loanAmount
+          };
+        }
+        return calc;
+      })
+    );
+  };
+  
+    const updateOtherDeductions = (atgClockNumber: string, otherDeductionsAmount: number) => {
+    setPayRollInfo(prev =>
+      prev.map(calc => {
+        if (calc.atg_clock_number == atgClockNumber) {
+          return {
+            ...calc,
+            other_deductions: otherDeductionsAmount,
+            net_pay: calc.gross_pay - (calc.loan_deductions || 0) - otherDeductionsAmount
           };
         }
         return calc;
@@ -647,7 +777,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
             </div>
             <div>
               <div className="text-2xl font-bold text-red-600">
-                {/* {formatCurrency(payRollInfo.reduce((sum, calc) => sum + calc.other_deductions + calc.loan_deductions, 0))} */}R 0
+                {formatCurrency(payRollInfo.reduce((sum, calc) => sum + (calc.other_deductions || 0) + (calc.loan_deductions || 0), 0))}
               </div>
               <div className="text-sm text-muted-foreground">Total Deductions</div>
             </div>
@@ -675,8 +805,10 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                 <TableHead>Bonus</TableHead>
                 <TableHead>Total worked hours</TableHead>
                 <TableHead>Total off weekend hours</TableHead>
-                <TableHead>Other Deductions</TableHead>
-                <TableHead>Net Pay</TableHead>
+                <TableHead>Total paid hours</TableHead>
+                <TableHead>Deductions</TableHead>
+                <TableHead>Loans</TableHead>
+                <TableHead>Gross Salary</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -691,8 +823,8 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                         <div className="text-sm text-muted-foreground">{calc.atg_clock_number}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{formatCurrency(calc.timeSpend * calc.hourly_rate)}</TableCell>
-                    <TableCell>{formatCurrency(calc?.overtime_pay || 0)}</TableCell>
+                    <TableCell>{calc.capped_hours || 11}</TableCell>
+                    <TableCell>{formatCurrency(calc?.hourly_rate || 0)}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -704,10 +836,34 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
                         placeholder="0.00"
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{formatCurrency(calc?.gross_pay || 0)}</TableCell>
-                    <TableCell className="text-orange-600">{formatCurrency(calc?.loan_deductions || 0)}</TableCell>
-                    <TableCell className="text-red-600">{formatCurrency(calc?.other_deductions || 0)}</TableCell>
-                    <TableCell className="font-bold text-green-600">{formatCurrency(calc?.net_pay || 0)}</TableCell>
+                    <TableCell className="font-medium">{Math.floor(calc.total_worked_hours || 0)}h</TableCell>
+                    <TableCell className="text-orange-600">{Math.floor(calc.total_weekend_hours || 0)}h</TableCell>
+                    <TableCell className="text-red-600">{Math.floor(calc.total_paid_hours || 0)}h</TableCell>
+                    <TableCell className="font-bold text-green-600">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={calc?.other_deductions}
+                        onChange={e => updateOtherDeductions(calc?.atg_clock_number, parseFloat(e.target.value) || 0)}
+                        className="w-24 h-8 text-sm"
+                        placeholder="0.00"
+                      />
+                    </TableCell>
+                    <TableCell className="font-bold text-green-600">
+             
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={calc?.loan_deductions}
+                        onChange={e => updateLoans(calc?.atg_clock_number, parseFloat(e.target.value) || 0)}
+                        className="w-24 h-8 text-sm"
+                        placeholder="0.00"
+                      />
+        
+                    </TableCell>
+                    <TableCell className="font-bold text-green-600">{formatCurrency(calc.net_pay)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -727,7 +883,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
               </div>
               <div>
                 <div className="text-lg font-bold text-red-600">
-                  {/* {formatCurrency(payRollInfo.reduce((sum, calc) => sum + calc?.other_deductions + calc?.loan_deductions, 0))} */}R 0
+                  {formatCurrency(payRollInfo.reduce((sum, calc) => sum + (calc.other_deductions || 0) + (calc.loan_deductions || 0), 0))}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Deductions</div>
               </div>
@@ -803,7 +959,7 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
               <CheckCircle className="h-4 w-4 mr-2" />
               Process Payroll
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownloadReport}>
               <Download className="h-4 w-4 mr-2" />
               Download Report
             </Button>
@@ -812,6 +968,74 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       </CardContent>
     </Card>
   );
+  const handleDownloadReport = () => {
+    if (!payRollInfo || payRollInfo.length === 0) return;
+
+    // Defines headers matching the logic and structure
+    const headers = [
+      "NAME", "NO", "SECTION", "CAPPED HRS PER SHIFT", "RATE P/HR", 
+      "TOTAL WORKED HOURS", "TOTAL OFF WEEKEND HOURS", "TOTAL PAID HOURS", 
+      "DEDUCTIONS", "LOANS", "GROSS SALARY (Incl. Incentive)"
+    ];
+
+    const data = payRollInfo.map((emp: any) => [
+      `${emp.first_name} ${emp.last_name}`,
+      emp.atg_clock_number,
+      emp.department,
+      emp.capped_hours || 11,
+      `R ${emp.hourly_rate}`,
+      Math.floor(emp.total_worked_hours || 0),
+      Math.floor(emp.total_weekend_hours || 0),
+      Math.floor(emp.total_paid_hours || 0),
+      emp.other_deductions || '',
+      emp.loan_deductions || '',
+      `R ${emp.net_pay}`
+    ]);
+
+    // Calculate totals
+    const totalWorked = payRollInfo.reduce((sum: number, emp: any) => sum + (emp.total_worked_hours || 0), 0);
+    const totalWeekend = payRollInfo.reduce((sum: number, emp: any) => sum + (emp.total_weekend_hours || 0), 0);
+    const totalPaid = payRollInfo.reduce((sum: number, emp: any) => sum + (emp.total_paid_hours || 0), 0);
+    const totalDeductions = payRollInfo.reduce((sum: number, emp: any) => sum + (emp.other_deductions || 0), 0);
+    const totalLoans = payRollInfo.reduce((sum: number, emp: any) => sum + (emp.loan_deductions || 0), 0);
+    const totalNet = payRollInfo.reduce((sum: number, emp: any) => sum + (emp.net_pay || 0), 0);
+
+    // Append totals row
+    data.push([
+      "", "", "", "", "", 
+      Math.floor(totalWorked), 
+      Math.floor(totalWeekend), 
+      Math.floor(totalPaid), 
+      `R ${totalDeductions.toFixed(2)}`, 
+      `R ${totalLoans.toFixed(2)}`, 
+      `R ${totalNet.toFixed(2)}`
+    ]);
+
+    // Append Employee Count Row
+    data.push(["", "", "", "", "", "", "", "", "NO. OF EMPLOYEES", payRollInfo.length, ""]);
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet([
+        ["HITEC PACKAGING - FORTNIGHT WAGES"],
+        [`RUN DATE - ${payPeriod.start_date} TO ${payPeriod.end_date}`],
+        [], // Empty row
+        headers,
+        ...data
+    ]);
+
+
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Payroll Report");
+
+    // Generate buffer
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+    
+    saveAs(dataBlob, `Payroll_Report_${payPeriod.start_date}_to_${payPeriod.end_date}.xlsx`);
+  };
+
 
   const handleProcessPayroll = async () => {
     try {
@@ -896,15 +1120,14 @@ const RunPayrollFlow = ({ onBack, onComplete }: RunPayrollFlowProps) => {
       case 2:
         return renderStep2();
       case 3:
-        return renderStep3();
-      case 4:
         return renderStep4();
-      case 5:
+      case 4:
         return renderStep5();
       default:
         return renderStep1();
     }
   };
+
 
   if (isLoading) {
     return (

@@ -7,10 +7,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from '@/components/ui/sidebar';
-import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building } from 'lucide-react';
+import { BarChart3, ShoppingCart, Factory, Shield, Package, Users, TrendingUp, Settings, Building, LogOut } from 'lucide-react';
+import { Button } from './ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AppSidebar = ({ activeView, setActiveView }) => {
+  const { signOut } = useAuth()
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     // { id: 'crm', label: 'Clients', icon: Building },
@@ -50,6 +54,12 @@ const AppSidebar = ({ activeView, setActiveView }) => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className='p-4'>
+        <Button onClick={signOut} variant="outline" className="w-full text-blue-800 justify-start">
+          <LogOut className="mr-2 h-4 w-4" />
+          Logout
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 };

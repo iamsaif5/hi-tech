@@ -84,14 +84,14 @@ const TimeAttendanceTab = () => {
       return `${month} ${day}`;
     };
     
-    periods.push({
-      id: 0,
-      dates: `Nov 5-Nov 18`,
-      status: 'complete',
-      days: 14,
-      startDate: '2025-11-05',
-      endDate: '2025-11-18',
-    });
+    // periods.push({
+    //   id: 0,
+    //   dates: `Nov 5-Nov 18`,
+    //   status: 'complete',
+    //   days: 14,
+    //   startDate: '2025-11-05',
+    //   endDate: '2025-11-18',
+    // });
 
     periods.push({
       id: 1,
@@ -125,7 +125,6 @@ const TimeAttendanceTab = () => {
 
   const payPeriods = calculatePayPeriods();
   
-  console.log("payPeriods", payPeriods)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -208,7 +207,6 @@ const TimeAttendanceTab = () => {
   //   }
   // }, [selectedPeriod]); // Run when selectedPeriod changes
 
-  console.log(selectedDate);
 
   // Fetch employees and time records
   useEffect(() => {

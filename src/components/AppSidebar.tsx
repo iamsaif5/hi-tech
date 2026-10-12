@@ -54,6 +54,9 @@ const AppSidebar = () => {
       ],
     },
     ...(isAdmin ? [{ id: 'approvals', label: 'Approvals', icon: ClipboardCheck, path: '/approvals' }] : []),
+    // Read-only for everyone else; the amount here changes what people are paid,
+    // so viewers have no reason to see it.
+    ...(isViewer ? [] : [{ id: 'settings', label: 'Settings', icon: Settings, path: '/settings' }]),
   ];
 
   const isActive = path => {

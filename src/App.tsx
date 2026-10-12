@@ -19,6 +19,7 @@ import LoansAndBonusesTab from './components/staff/LoansAndBonusesTab';
 import StaffDirectory from './components/staff/StaffDirectory';
 import PayrollBatchSlips from './pages/PayrollBatchSlips';
 import ApprovalsPage from './pages/Approvals';
+import SettingsPage from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +126,7 @@ const AppRoutes = () => {
         <Route path="/payroll/monthly" element={<MonthlyPayroll />} />
         <Route path="/staff/payroll-batches/:id/slips" element={<PayrollBatchSlips />} />
         <Route path="/approvals" element={<ApprovalsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
       {/* 404 */}

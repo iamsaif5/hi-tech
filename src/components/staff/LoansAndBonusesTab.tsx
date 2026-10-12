@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown, FileSpreadsheet, Truck, Smartphone, Fuel, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateBonusPDF } from '@/lib/bonusPDF';
 import { generateLoanPDF } from '@/lib/loanPDF';
@@ -25,6 +25,8 @@ import { usePost } from '@/hooks/usePost';
 import { usePut } from '@/hooks/usePut';
 import { fetchData, postData, deleteData, downloadFile } from '@/lib/Api';
 import CommentsModal from '@/components/CommentsModal';
+import WageBatchTable, { type WagePaymentType } from './loans-bonuses/WageBatchTable';
+import NewPaymentFlow, { type FlowPaymentType } from './loans-bonuses/NewPaymentFlow';
 
 interface Loan {
   id: number;
@@ -56,6 +58,18 @@ interface Loan {
   created_at?: string;
 }
 
+const SECTIONS: { key: string; label: string; icon: any }[] = [
+  { key: 'loans', label: 'Loans', icon: DollarSign },
+  { key: 'bonuses', label: 'Bonuses', icon: Users },
+  { key: 'transport', label: 'Transport', icon: Truck },
+  { key: 'airtime', label: 'Airtime', icon: Smartphone },
+  { key: 'fuel', label: 'Fuel', icon: Fuel },
+  { key: 'other', label: 'Other', icon: MoreHorizontal },
+];
+
+/** Tabs backed by WageRequestBatch rather than their own model. */
+const WAGE_SECTIONS: WagePaymentType[] = ['transport', 'airtime', 'fuel', 'other'];
+
 interface StaffMember {
   id: number;
   clock_number: string;
@@ -69,6 +83,9 @@ interface StaffMember {
 }
 
 interface Bonus {
+  target_payroll?: string;
+  bonus_reason?: string;
+  sync_to_simplepay?: boolean;
   id: number;
   staff_member: number;
   staff_member_name: string;
@@ -105,13 +122,15 @@ const LoansAndBonusesTab = () => {
   const { mutateAsync: postLoan } = usePost();
   const { mutateAsync: putLoan } = usePut();
   const [activeSection, setActiveSection] = useState('loans');
+  // Which full-page create flow is open, if any. Null means show the tabs.
+  const [flowType, setFlowType] = useState<FlowPaymentType | null>(null);
+  // Bumped after a submit so the batch tables refetch.
+  const [reloadKey, setReloadKey] = useState(0);
   const [showLoanDialog, setShowLoanDialog] = useState(false);
-  const [showBonusDialog, setShowBonusDialog] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
   const [commentsModal, setCommentsModal] = useState<{ approvalId: number; itemLabel: string; itemStatus: string } | null>(null);
   const [loanStaffPickerOpen, setLoanStaffPickerOpen] = useState(false);
-  const [bonusStaffPickerOpen, setBonusStaffPickerOpen] = useState(false);
 
   const [loanForm, setLoanForm] = useState({
     employee_id: '',
@@ -170,13 +189,6 @@ const LoansAndBonusesTab = () => {
     }
   };
 
-  const [bonusForm, setBonusForm] = useState({
-    employee_id: '',
-    bonus_amount: '',
-    bonus_reason: '',
-    payroll_period_id: '',
-    status: 'pending'
-  });
 
   useEffect(() => {
     // Initialization logic if needed
@@ -244,53 +256,6 @@ const LoansAndBonusesTab = () => {
     }
   };
 
-  const handleBonusSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const bonusData = {
-        staff_member: parseInt(bonusForm.employee_id),
-        amount: bonusForm.bonus_amount,
-        reason: bonusForm.bonus_reason,
-        status: bonusForm.status
-      };
-
-      if (editingBonus) {
-        await putLoan({
-          url: `staff/bonuses/${editingBonus.id}/`,
-          data: bonusData
-        });
-      } else {
-        await postLoan({
-          url: 'staff/bonuses/',
-          data: bonusData
-        });
-      }
-
-      toast({
-        title: editingBonus ? 'Bonus Updated' : 'Bonus Submitted for Approval',
-        description: editingBonus ? 'Bonus updated successfully.' : 'Awaiting approval before it takes effect.',
-      });
-
-      setShowBonusDialog(false);
-      setEditingBonus(null);
-      setBonusForm({
-        employee_id: '',
-        bonus_amount: '',
-        bonus_reason: '',
-        payroll_period_id: '',
-        status: 'pending'
-      });
-      refetchBonuses();
-    } catch (error) {
-      console.error('Error saving bonus:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save bonus",
-        variant: "destructive",
-      });
-    }
-  };
 
 
 
@@ -403,24 +368,6 @@ const LoansAndBonusesTab = () => {
     setShowLoanDialog(true);
   };
 
-  const editBonus = async (bonus: Bonus) => {
-    setEditingBonus(bonus);
-    setBonusForm({
-      employee_id: bonus.staff_member.toString(),
-      bonus_amount: bonus.amount,
-      bonus_reason: bonus.reason || '',
-      payroll_period_id: '',
-      status: bonus.status
-    });
-    setBonusDocuments([]);
-    setShowBonusDialog(true);
-    try {
-      const docs = await fetchData(`staff/bonuses/${bonus.id}/documents/`);
-      setBonusDocuments(docs || []);
-    } catch {
-      // documents load failure is non-fatal
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -440,32 +387,40 @@ const LoansAndBonusesTab = () => {
   const loans = loansData || [];
   const bonuses = bonusesData || [];
 
+  // The create flow takes over the page, the way Run Payroll does.
+  if (flowType) {
+    return (
+      <NewPaymentFlow
+        paymentType={flowType}
+        onBack={() => setFlowType(null)}
+        onComplete={() => {
+          setFlowType(null);
+          setReloadKey(k => k + 1);
+          refetchBonuses();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Section Navigation Buttons - Left Aligned */}
-      <div className="flex justify-start gap-2">
-        <Button
-          variant={activeSection === 'loans' ? 'default' : 'outline'}
-          onClick={() => setActiveSection('loans')}
-          className={`flex items-center gap-2 ${activeSection === 'loans'
-            ? 'bg-orange-500 hover:bg-orange-600 text-white'
-            : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
+      {/* Section Navigation */}
+      <div className="flex flex-wrap justify-start gap-2">
+        {SECTIONS.map(({ key, label, icon: Icon }) => (
+          <Button
+            key={key}
+            variant={activeSection === key ? 'default' : 'outline'}
+            onClick={() => setActiveSection(key)}
+            className={`flex items-center gap-2 ${
+              activeSection === key
+                ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
             }`}
-        >
-          <DollarSign className="h-4 w-4" />
-          Loans
-        </Button>
-        <Button
-          variant={activeSection === 'bonuses' ? 'default' : 'outline'}
-          onClick={() => setActiveSection('bonuses')}
-          className={`flex items-center gap-2 ${activeSection === 'bonuses'
-            ? 'bg-orange-500 hover:bg-orange-600 text-white'
-            : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300'
-            }`}
-        >
-          <Users className="h-4 w-4" />
-          Bonuses
-        </Button>
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </Button>
+        ))}
       </div>
 
       {/* Loans Section */}
@@ -839,176 +794,12 @@ const LoansAndBonusesTab = () => {
               <Users className="h-4 w-4" />
               Employee Bonuses
             </h3>
-            <Dialog open={showBonusDialog} onOpenChange={setShowBonusDialog}>
-              {canWrite && (
-              <DialogTrigger asChild>
-                <Button onClick={() => setEditingBonus(null)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Bonus
-                </Button>
-              </DialogTrigger>
-              )}
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingBonus ? 'Edit Bonus' : 'Add New Bonus'}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleBonusSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="employee_id">Staff Member</Label>
-                    <Popover open={bonusStaffPickerOpen} onOpenChange={setBonusStaffPickerOpen} modal={true}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={bonusStaffPickerOpen}
-                          className="w-full justify-between font-normal"
-                        >
-                          <span className={cn(!bonusForm.employee_id && "text-muted-foreground/50")}>
-                            {bonusForm.employee_id
-                              ? staffMembers?.find((s) => s.id.toString() === bonusForm.employee_id)?.full_name
-                              : "Select staff member"}
-                          </span>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search staff member..." />
-                          <CommandList>
-                            <CommandEmpty>No staff member found.</CommandEmpty>
-                            <CommandGroup>
-                              {staffMembers?.map((staff) => (
-                                <CommandItem
-                                  key={staff.id}
-                                  value={staff.full_name}
-                                  onSelect={() => {
-                                    setBonusForm(prev => ({ ...prev, employee_id: staff.id.toString() }));
-                                    setBonusStaffPickerOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      bonusForm.employee_id === staff.id.toString() ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {staff.full_name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="bonus_amount">Amount</Label>
-                    <Input
-                      id="bonus_amount"
-                      type="number"
-                      step="0.01"
-                      value={bonusForm.bonus_amount}
-                      onChange={(e) => setBonusForm(prev => ({ ...prev, bonus_amount: e.target.value }))}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="bonus_reason">Reason or Notes</Label>
-                    <Textarea
-                      id="bonus_reason"
-                      value={bonusForm.bonus_reason}
-                      onChange={(e) => setBonusForm(prev => ({ ...prev, bonus_reason: e.target.value }))}
-                      placeholder="Performance bonus, overtime, etc."
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={bonusForm.status}
-                      onValueChange={(value) => setBonusForm(prev => ({ ...prev, status: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {editingBonus && (
-                    <div>
-                      <Label>Documents</Label>
-                      <div
-                        className="mt-1 border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
-                        onClick={() => document.getElementById('bonus-doc-upload')?.click()}
-                      >
-                        {bonusDocUploading ? (
-                          <Loader2 className="mx-auto h-6 w-6 text-gray-400 mb-1 animate-spin" />
-                        ) : (
-                          <Paperclip className="mx-auto h-6 w-6 text-gray-400 mb-1" />
-                        )}
-                        <p className="text-sm text-gray-500">{bonusDocUploading ? 'Uploading…' : 'Click to attach documents'}</p>
-                        <p className="text-xs text-gray-400">PDF, PNG, JPG, DOC up to 10MB each</p>
-                        <input
-                          id="bonus-doc-upload"
-                          type="file"
-                          multiple
-                          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                          className="hidden"
-                          onChange={handleBonusDocUpload}
-                          disabled={bonusDocUploading}
-                        />
-                      </div>
-                      {bonusDocuments.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {bonusDocuments.map((doc) => (
-                            <li key={doc.id} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="h-4 w-4 text-gray-400 shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="truncate text-gray-700 font-medium">{doc.file_name}</p>
-                                  <p className="text-xs text-gray-400">{doc.uploaded_by} · {fmtDate(doc.uploaded_at)}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1 ml-2 shrink-0">
-                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                    <Download className="h-3.5 w-3.5" />
-                                  </Button>
-                                </a>
-                                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => handleBonusDocDelete(doc)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    {canWrite && editingBonus?.status !== 'approved' && (
-                      <Button type="submit" className="flex-1">
-                        {editingBonus ? 'Update Bonus' : 'Add Bonus'}
-                      </Button>
-                    )}
-                    <Button type="button" variant="outline" onClick={() => { setShowBonusDialog(false); setBonusDocuments([]); }}>
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            {canWrite && (
+              <Button onClick={() => setFlowType('bonus')}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Bonus
+              </Button>
+            )}
           </div>
 
           {/* Table with grey header - matching Clients page exactly */}
@@ -1019,6 +810,7 @@ const LoansAndBonusesTab = () => {
                   <tr>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Staff Member</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Date Awarded</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Paid on</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Amount</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Reason</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
@@ -1032,6 +824,19 @@ const LoansAndBonusesTab = () => {
                         {bonus.staff_member_name}
                       </td>
                       <td className="py-2 px-4 text-xs">{fmtDate(bonus.created_at)}</td>
+                      <td className="py-2 px-4 text-xs">
+                        {bonus.target_payroll === 'general' ? (
+                          'Fortnight payroll'
+                        ) : bonus.target_payroll === 'weekend' ? (
+                          <span>
+                            Off weekend payroll
+                            <span className="block text-[10px] text-muted-foreground">app only</span>
+                          </span>
+                        ) : (
+                          /* Pre-dates target_payroll — kept as history, never paid again. */
+                          <span className="text-muted-foreground">Historic</span>
+                        )}
+                      </td>
                       <td className="py-2 px-4 text-xs">R{parseFloat(bonus.amount).toFixed(2)}</td>
                       <td className="py-2 px-4 text-xs">{bonus.reason}</td>
                       <td className="py-2 px-4">
@@ -1051,9 +856,6 @@ const LoansAndBonusesTab = () => {
                       </td>
                       <td className="py-2 px-4">
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="outline" onClick={() => editBonus(bonus)} className="text-xs">
-                            {canWrite && bonus.status !== 'approved' ? <Edit className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          </Button>
                           {bonus.status === 'approved' && (
                             <Button
                               size="sm"
@@ -1113,6 +915,25 @@ const LoansAndBonusesTab = () => {
           </div>
         </div>
       )}
+      {WAGE_SECTIONS.map(type =>
+        activeSection === type ? (
+          <div key={type} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2 capitalize">
+                {type} payments
+              </h3>
+              {canWrite && (
+                <Button onClick={() => setFlowType(type)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New {type}
+                </Button>
+              )}
+            </div>
+            <WageBatchTable paymentType={type} reloadKey={reloadKey} />
+          </div>
+        ) : null,
+      )}
+
       {commentsModal && (
         <CommentsModal
           open={!!commentsModal}

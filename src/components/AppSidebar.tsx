@@ -49,9 +49,6 @@ const AppSidebar = () => {
         { id: 'general-payroll', label: 'General Payroll', path: '/payroll/general' },
         { id: 'weekend-payroll', label: 'Weekend Payroll', path: '/payroll/weekend' },
         // Hidden from viewers (ViewerRoute will bounce them anyway).
-        ...(!isViewer
-          ? [{ id: 'wage-requests', label: 'Wage Requests', path: '/wage-requests' }]
-          : []),
       ],
     },
     ...(isAdmin ? [{ id: 'approvals', label: 'Approvals', icon: ClipboardCheck, path: '/approvals' }] : []),

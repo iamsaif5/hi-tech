@@ -21,13 +21,51 @@ interface Doc {
 
 interface Props {
   ownerType: DocumentOwnerType;
-  /** Null while the owner is still being created — upload is disabled until saved. */
+  /** Null while the owner is still being created — see `pendingFiles`. */
   ownerId: number | null;
   label?: string;
+  /**
+   * Queue mode. Supply these two and the picker works before the owner
+   * exists: files are held here and the parent uploads them once it has an
+   * id. Without them an absent `ownerId` just disables the picker.
+   */
+  pendingFiles?: File[];
+  onPendingFilesChange?: (files: File[]) => void;
 }
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.doc,.docx';
-const MAX_BYTES = 10 * 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = MAX_DOCUMENT_BYTES;
+
+/**
+ * Upload files against an owner that already exists.
+ *
+ * Exported so a create flow can save the record first and then attach what the
+ * operator queued, without reimplementing the field names. Never throws: a
+ * failed file is reported back so the caller can say which ones need redoing
+ * rather than losing them silently.
+ */
+export const uploadDocuments = async (
+  ownerType: DocumentOwnerType,
+  ownerId: number,
+  files: File[],
+): Promise<{ uploaded: number; failed: string[] }> => {
+  let uploaded = 0;
+  const failed: string[] = [];
+  for (const file of files) {
+    try {
+      const body = new FormData();
+      body.append('owner_type', ownerType);
+      body.append('owner_id', String(ownerId));
+      body.append('file', file);
+      await postData({ url: 'staff/documents/', data: body });
+      uploaded += 1;
+    } catch {
+      failed.push(file.name);
+    }
+  }
+  return { uploaded, failed };
+};
 
 /**
  * Attach, view and remove files on a staff member, loan or payroll run.
@@ -36,7 +74,9 @@ const MAX_BYTES = 10 * 1024 * 1024;
  * dropzones on staff and loans, which looked like they worked but held the
  * files in browser state and never uploaded them.
  */
-const DocumentManager: React.FC<Props> = ({ ownerType, ownerId, label = 'Documents' }) => {
+const DocumentManager: React.FC<Props> = ({
+  ownerType, ownerId, label = 'Documents', pendingFiles, onPendingFilesChange,
+}) => {
   const { toast } = useToast();
   const { user } = useAuth() as any;
   const canWrite = user?.role !== 'viewer';
@@ -49,22 +89,38 @@ const DocumentManager: React.FC<Props> = ({ ownerType, ownerId, label = 'Documen
   );
   const docs: Doc[] = Array.isArray(data) ? data : [];
 
+  // Before the owner exists the picker still works, provided the parent said
+  // it will carry the files — it saves the record, then uploads them.
+  const queueing = !ownerId && !!onPendingFilesChange;
+  const queued = pendingFiles || [];
+
+  const tooLarge = (file: File) => {
+    if (file.size <= MAX_BYTES) return false;
+    toast({
+      title: 'File too large',
+      description: `${file.name} is over 10MB.`,
+      variant: 'destructive',
+    });
+    return true;
+  };
+
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     e.target.value = ''; // let the same file be picked again after a failure
-    if (!files.length || !ownerId) return;
+    if (!files.length) return;
+
+    if (queueing) {
+      // Size is checked now rather than at submit, so a file that cannot be
+      // sent is rejected while the operator is still looking at the picker.
+      onPendingFilesChange!([...queued, ...files.filter(f => !tooLarge(f))]);
+      return;
+    }
+    if (!ownerId) return;
 
     setUploading(true);
     try {
       for (const file of files) {
-        if (file.size > MAX_BYTES) {
-          toast({
-            title: 'File too large',
-            description: `${file.name} is over 10MB.`,
-            variant: 'destructive',
-          });
-          continue;
-        }
+        if (tooLarge(file)) continue;
         const body = new FormData();
         body.append('owner_type', ownerType);
         body.append('owner_id', String(ownerId));
@@ -103,7 +159,7 @@ const DocumentManager: React.FC<Props> = ({ ownerType, ownerId, label = 'Documen
     <div className="space-y-2">
       <Label>{label}</Label>
 
-      {!ownerId ? (
+      {!ownerId && !queueing ? (
         <p className="text-xs text-muted-foreground">
           Save first, then documents can be attached.
         </p>
@@ -132,6 +188,33 @@ const DocumentManager: React.FC<Props> = ({ ownerType, ownerId, label = 'Documen
             />
           </div>
         )
+      )}
+
+      {queueing && queued.length > 0 && (
+        <ul className="space-y-1">
+          {queued.map((file, i) => (
+            <li
+              key={`${file.name}-${i}`}
+              className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                <span className="truncate">{file.name}</span>
+                <span className="text-gray-400 text-xs shrink-0">
+                  ({(file.size / 1024).toFixed(0)} KB)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onPendingFilesChange!(queued.filter((_, j) => j !== i))}
+                className="text-gray-400 hover:text-red-500 shrink-0"
+                title="Remove"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       {isLoading && ownerId ? (
@@ -187,6 +270,14 @@ const DocumentManager: React.FC<Props> = ({ ownerType, ownerId, label = 'Documen
       ) : ownerId ? (
         <p className="text-xs text-muted-foreground">No documents attached yet.</p>
       ) : null}
+
+      {queueing && (
+        <p className="text-xs text-muted-foreground">
+          {queued.length
+            ? `${queued.length} file${queued.length === 1 ? '' : 's'} will be attached once the staff member is saved.`
+            : 'Attach now — files upload automatically once the staff member is saved.'}
+        </p>
+      )}
     </div>
   );
 };

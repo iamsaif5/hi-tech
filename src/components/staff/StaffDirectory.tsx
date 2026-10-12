@@ -31,7 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import DocumentManager from '@/components/documents/DocumentManager';
+import DocumentManager, { uploadDocuments } from '@/components/documents/DocumentManager';
 import { Textarea } from '../ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -147,6 +147,9 @@ const StaffDirectory = () => {
   const [loanDetails] = useState([]);
   const [showLoanDialog, setShowLoanDialog] = useState(false);
   const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
+  // Files picked before the staff member exists; uploaded once it has an id.
+  const [newStaffFiles, setNewStaffFiles] = useState<File[]>([]);
+  const [savingNewStaff, setSavingNewStaff] = useState(false);
   const [showEditStaffDialog, setShowEditStaffDialog] = useState(false);
   const [editStaffId, setEditStaffId] = useState<string | null>(null);
   const [loanForm, setLoanForm] = useState({
@@ -203,13 +206,49 @@ const StaffDirectory = () => {
   };
 
   const { mutate: addStaff, isPending: isAdding } = usePost({
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Staff member added successfully' });
+    // The staff member has to exist before a document can point at it, so the
+    // two steps run back to back here rather than being shown to the operator
+    // as two steps. The dialog stays open until both are done.
+    onSuccess: async (created: any) => {
+      const newId = Number(created?.id);
+      let failed: string[] = [];
+
+      if (newStaffFiles.length) {
+        if (newId) {
+          const result = await uploadDocuments('staff', newId, newStaffFiles);
+          failed = result.failed;
+        } else {
+          // No id came back, so there is nothing to attach the files to. Say
+          // so rather than reporting a clean save and dropping them.
+          failed = newStaffFiles.map(f => f.name);
+        }
+      }
+
+      if (failed.length) {
+        // The staff member was still created — say so, and name what needs
+        // redoing, rather than letting the files disappear quietly.
+        toast({
+          title: 'Staff member added, some documents failed',
+          description: `${failed.join(', ')} did not upload. Attach them from Edit.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: newStaffFiles.length
+            ? `Staff member added with ${newStaffFiles.length} document${newStaffFiles.length === 1 ? '' : 's'}.`
+            : 'Staff member added successfully',
+        });
+      }
+
+      setSavingNewStaff(false);
       setShowAddStaffDialog(false);
       addForm.reset(ADD_DEFAULTS);
+      setNewStaffFiles([]);
       refetch();
     },
     onError: (error: any) => {
+      setSavingNewStaff(false);
       applyServerErrors(addForm, error);
     },
   });
@@ -347,6 +386,7 @@ const StaffDirectory = () => {
   };
 
   const handleAddNewStaff = addForm.handleSubmit((data) => {
+    setSavingNewStaff(true);
     addStaff({ url: '/staff/members/', data });
   });
 
@@ -740,7 +780,16 @@ const StaffDirectory = () => {
       </AlertDialog>
 
       {/* Add Staff Dialog */}
-      <Dialog open={showAddStaffDialog} onOpenChange={setShowAddStaffDialog}>
+      <Dialog
+        open={showAddStaffDialog}
+        onOpenChange={open => {
+          // Don't let it close mid-upload — the documents would be lost after
+          // the staff member had already been created.
+          if (savingNewStaff) return;
+          if (!open) setNewStaffFiles([]);
+          setShowAddStaffDialog(open);
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Staff Member</DialogTitle>
@@ -748,17 +797,28 @@ const StaffDirectory = () => {
           <form onSubmit={handleAddNewStaff} className="space-y-4">
             {renderFormFields(addForm)}
 
-            {/* The old dropzone here never uploaded — files sat in React
-                state and were dropped on submit. A new staff member has no id
-                yet, so documents are attached from Edit once saved. */}
-            <DocumentManager ownerType="staff" ownerId={null} />
+            {/* A new staff member has no id yet, so the files are held here
+                and uploaded by the submit handler the moment one exists. */}
+            <DocumentManager
+              ownerType="staff"
+              ownerId={null}
+              pendingFiles={newStaffFiles}
+              onPendingFilesChange={setNewStaffFiles}
+            />
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowAddStaffDialog(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingNewStaff}
+                onClick={() => setShowAddStaffDialog(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isAdding}>
-                {isAdding ? 'Adding...' : 'Add Staff'}
+              <Button type="submit" disabled={isAdding || savingNewStaff}>
+                {savingNewStaff
+                  ? (newStaffFiles.length ? 'Saving and uploading...' : 'Adding...')
+                  : 'Add Staff'}
               </Button>
             </div>
           </form>

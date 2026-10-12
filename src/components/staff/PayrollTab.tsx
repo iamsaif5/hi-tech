@@ -20,6 +20,7 @@ import AccountingSummaryPrint from '@/components/staff/AccountingSummaryPrint';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
 import CommentsModal from '@/components/CommentsModal';
+import PayrollRowActions from '@/components/payroll/PayrollRowActions';
 import PayrollSummaryDialog from '@/components/payroll/PayrollSummaryDialog';
 
 interface PayrollTabProps {
@@ -618,11 +619,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Employees</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Total Cost</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Pay Date</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Bank CSV</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Cell CSV</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Accounting</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">View</th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Print</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Files</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Status</th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Actions</th>
                 </tr>
@@ -652,36 +649,18 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                     <td className="py-2 px-4 text-xs">
                       {payroll.payment_date ? fmtDate(payroll.payment_date) : '-'}
                     </td>
-                    {/* Bank CSV */}
-                    <td className="py-2 px-4">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Bank CSV" onClick={() => handleDownloadPDF(payroll)}>
-                        <Download className="h-3 w-3" />
-                      </Button>
-                    </td>
-                    {/* Cell CSV */}
-                    <td className="py-2 px-4">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-orange-500" title="Cell Phone CSV" onClick={() => handleDownloadCellCSV(payroll)}>
-                        <Download className="h-3 w-3" />
-                      </Button>
-                    </td>
-                    {/* Accounting Info PDF */}
-                    <td className="py-2 px-4">
-                      {payroll.factory !== 'YOUTH_WORK' && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-purple-600" title="Accounting Info PDF" onClick={() => handleDownloadAccounting(payroll)}>
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </td>
-                    <td className="py-2 px-4">
-                      <button onClick={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}>
-                        <Eye className="h-4 w-4 cursor-pointer hover:text-primary" />
-                      </button>
-                    </td>
-                    <td className="py-2 px-4">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Print" onClick={() => handlePrintBatch(payroll)}>
-                        <Printer className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
+                      {/* Downloads, view and print collapsed into one menu —
+                          the row had five single-icon columns before. */}
+                      <td className="py-2 px-4">
+                        <PayrollRowActions
+                          payroll={payroll}
+                          onBankCsv={() => handleDownloadPDF(payroll)}
+                          onCellCsv={() => handleDownloadCellCSV(payroll)}
+                          onAccounting={() => handleDownloadAccounting(payroll)}
+                          onViewSlips={() => navigate(`/staff/payroll-batches/${payroll.id}/slips`)}
+                          onPrint={() => handlePrintBatch(payroll)}
+                        />
+                      </td>
                     <td className="py-2 px-4">
                       <TooltipProvider>
                         <Tooltip>

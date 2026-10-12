@@ -81,6 +81,7 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
   );
   const [bonusReason, setBonusReason] = useState('performance');
   const [recurrence, setRecurrence] = useState<'once_off' | 'every_fortnight'>('once_off');
+  const [syncToSimplePay, setSyncToSimplePay] = useState(true);
   const [customReason, setCustomReason] = useState('');
   const [defaultAmount, setDefaultAmount] = useState('');
   const [search, setSearch] = useState('');
@@ -209,9 +210,11 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
               reason: BONUS_REASONS.find(r => r.value === bonusReason)?.label || bonusReason,
               target_payroll: targetPayroll,
               bonus_reason: bonusReason,
-              // Off-weekend never reaches SimplePay; a casual's pay stays in
-              // the app. The backend enforces both, this just avoids a 400.
-              sync_to_simplepay: !offWeekend && row.employee_type !== 'casual',
+              // The operator's choice, except where it cannot apply: an
+              // off-weekend run never reaches SimplePay and a casual's pay
+              // stays in the app. The backend enforces both regardless.
+              sync_to_simplepay:
+                syncToSimplePay && !offWeekend && row.employee_type !== 'casual',
             },
           });
         }
@@ -360,6 +363,28 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {isBonus && (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 cursor-pointer"
+                    checked={syncToSimplePay && !offWeekend}
+                    disabled={offWeekend}
+                    onChange={e => setSyncToSimplePay(e.target.checked)}
+                  />
+                  <span className="text-xs">
+                    <span className="font-medium">Push through to SimplePay</span>
+                    <span className="block text-muted-foreground mt-0.5">
+                      {offWeekend
+                        ? 'Not available — off weekend payroll is always paid from the app only.'
+                        : 'Untick to pay this from the app only, without it appearing on the SimplePay payslip. Casual staff are always app only.'}
+                    </span>
+                  </span>
+                </label>
               </div>
             )}
 

@@ -757,6 +757,38 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
           <CardTitle className="text-base">Payroll Calculations</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
+            {/* Per-shift bonus. Everyone who worked gets this for each shift,
+                so it is applied in one go rather than typed per employee.
+                Individual rows stay editable afterwards. */}
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 p-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Bonus per shift (R)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="mt-1 w-32"
+                  value={shiftBonus}
+                  onChange={e => setShiftBonus(e.target.value)}
+                  placeholder="50.00"
+                />
+              </div>
+              <Button type="button" variant="outline" onClick={applyShiftBonus}>
+                Apply to all
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-xs"
+                onClick={saveShiftBonusDefault}
+                disabled={savingShiftBonus}
+              >
+                {savingShiftBonus ? 'Saving…' : 'Save as default'}
+              </Button>
+              <p className="text-xs text-muted-foreground ml-auto max-w-sm">
+                Multiplied by the shifts each person actually worked — two days at R50 gives R100.
+              </p>
+            </div>
           <Table>
             <TableHeader>
               <TableRow>

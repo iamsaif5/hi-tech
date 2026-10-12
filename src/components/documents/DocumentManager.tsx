@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Paperclip, FileText, X, Loader2, Download } from 'lucide-react';
+import { Paperclip, FileText, X, Loader2, Eye } from 'lucide-react';
 import useFetch from '@/hooks/useFetch';
 import { deleteData, postData } from '@/lib/Api';
 import { useToast } from '@/hooks/use-toast';
@@ -159,37 +159,6 @@ const DocumentManager: React.FC<Props> = ({
     <div className="space-y-2">
       <Label>{label}</Label>
 
-      {!ownerId && !queueing ? (
-        <p className="text-xs text-muted-foreground">
-          Save first, then documents can be attached.
-        </p>
-      ) : (
-        canWrite && (
-          <div
-            className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
-            onClick={() => !uploading && inputRef.current?.click()}
-          >
-            {uploading ? (
-              <Loader2 className="mx-auto h-6 w-6 text-gray-400 mb-1 animate-spin" />
-            ) : (
-              <Paperclip className="mx-auto h-6 w-6 text-gray-400 mb-1" />
-            )}
-            <p className="text-sm text-gray-500">
-              {uploading ? 'Uploading…' : 'Click to attach documents'}
-            </p>
-            <p className="text-xs text-gray-400">PDF, PNG, JPG, DOC up to 10MB each</p>
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              accept={ACCEPT}
-              className="hidden"
-              onChange={onPick}
-            />
-          </div>
-        )
-      )}
-
       {queueing && queued.length > 0 && (
         <ul className="space-y-1">
           {queued.map((file, i) => (
@@ -249,9 +218,9 @@ const DocumentManager: React.FC<Props> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-blue-600"
-                  title="Open"
+                  title="View"
                 >
-                  <Download className="h-4 w-4" />
+                  <Eye className="h-4 w-4" />
                 </a>
                 {canWrite && (
                   <button
@@ -270,6 +239,40 @@ const DocumentManager: React.FC<Props> = ({
       ) : ownerId ? (
         <p className="text-xs text-muted-foreground">No documents attached yet.</p>
       ) : null}
+
+      {/* The picker sits below the list: what is already attached is what
+          the operator came to see, so it should not be pushed down the page
+          as more files are added. */}
+      {!ownerId && !queueing ? (
+        <p className="text-xs text-muted-foreground">
+          Save first, then documents can be attached.
+        </p>
+      ) : (
+        canWrite && (
+          <div
+            className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+            onClick={() => !uploading && inputRef.current?.click()}
+          >
+            {uploading ? (
+              <Loader2 className="mx-auto h-6 w-6 text-gray-400 mb-1 animate-spin" />
+            ) : (
+              <Paperclip className="mx-auto h-6 w-6 text-gray-400 mb-1" />
+            )}
+            <p className="text-sm text-gray-500">
+              {uploading ? 'Uploading…' : 'Click to attach documents'}
+            </p>
+            <p className="text-xs text-gray-400">PDF, PNG, JPG, DOC up to 10MB each</p>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept={ACCEPT}
+              className="hidden"
+              onChange={onPick}
+            />
+          </div>
+        )
+      )}
 
       {queueing && (
         <p className="text-xs text-muted-foreground">

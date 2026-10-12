@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -25,12 +26,17 @@ const formatCurrency = (amount: any) => {
   return `R${(isNaN(n) ? 0 : n).toFixed(2)}`;
 };
 
-/** Hours are shown for the last 30 days, as the tab says. */
-const thirtyDaysAgo = () => {
+const daysAgo = (days: number) => {
   const d = new Date();
-  d.setDate(d.getDate() - 30);
+  d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 };
+
+const HOURS_RANGES = [
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: 'all', label: 'All time' },
+] as const;
 
 const EmptyRow = ({ cols, children }: { cols: number; children: React.ReactNode }) => (
   <TableRow>
@@ -51,12 +57,16 @@ const EmptyRow = ({ cols, children }: { cols: number; children: React.ReactNode 
 const StaffDetailsDialog: React.FC<Props> = ({ employee, open, onOpenChange }) => {
   const staffId = employee?.id;
   const enabled = open && !!staffId;
+  // Someone who last clocked two months ago shows nothing over 30 days,
+  // which reads as a broken tab rather than an empty window.
+  const [hoursRange, setHoursRange] = useState<string>('30');
 
   // Attendance holds a date and a total only — there is no clock in/out,
   // overtime or lateness anywhere in the system, so the table shows what
   // exists rather than columns that can never be filled.
+  const hoursQuery = hoursRange === 'all' ? '' : `?start_date=${daysAgo(Number(hoursRange))}`;
   const { data: attendance, isLoading: hoursLoading } = useFetch<any>(
-    enabled ? `atg/attendance/staff/${staffId}/?start_date=${thirtyDaysAgo()}` : '',
+    enabled ? `atg/attendance/staff/${staffId}/${hoursQuery}` : '',
     { enabled },
   );
   const { data: payslips, isLoading: slipsLoading } = useFetch<any>(
@@ -257,13 +267,23 @@ const StaffDetailsDialog: React.FC<Props> = ({ employee, open, onOpenChange }) =
             <TabsContent value="hours" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Time Records (Last 30 Days)</CardTitle>
-                    {!hoursLoading && hours.length > 0 && (
-                      <span className="text-sm text-muted-foreground">
-                        {hours.length} day{hours.length === 1 ? '' : 's'} · {totalHours.toFixed(2)} hours
-                      </span>
-                    )}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle>Time Records</CardTitle>
+                    <div className="flex items-center gap-3">
+                      {!hoursLoading && hours.length > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {hours.length} day{hours.length === 1 ? '' : 's'} · {totalHours.toFixed(2)} hours
+                        </span>
+                      )}
+                      <Select value={hoursRange} onValueChange={setHoursRange}>
+                        <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {HOURS_RANGES.map(r => (
+                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -294,7 +314,11 @@ const StaffDetailsDialog: React.FC<Props> = ({ employee, open, onOpenChange }) =
                           </TableRow>
                         ))
                       ) : (
-                        <EmptyRow cols={3}>No clockings in the last 30 days</EmptyRow>
+                        <EmptyRow cols={3}>
+                          {hoursRange === 'all'
+                            ? 'No clockings on record'
+                            : 'No clockings in this period — try a longer range'}
+                        </EmptyRow>
                       )}
                     </TableBody>
                   </Table>

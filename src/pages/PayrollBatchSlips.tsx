@@ -13,6 +13,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import useFetch from '@/hooks/useFetch';
+import DocumentManager from '@/components/documents/DocumentManager';
 import { fetchData, downloadFile } from '@/lib/Api';
 
 const PAGE_SIZE = 20;
@@ -153,6 +154,16 @@ const PayrollBatchSlips = () => {
             {isDownloadingReport ? 'Downloading...' : 'Download Report'}
           </Button>
         </div>
+      </div>
+
+      {/* Supporting documents for the run itself — signed sheets, approvals,
+          anything Kayla needs kept with the batch rather than a person. */}
+      <div className="mb-4 rounded-lg border bg-white p-4">
+        <DocumentManager
+          ownerType="payroll_batch"
+          ownerId={id ? Number(id) : null}
+          label="Run documents"
+        />
       </div>
 
       {/* Table */}

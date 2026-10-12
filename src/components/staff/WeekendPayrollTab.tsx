@@ -23,6 +23,8 @@ import CommentsModal from '@/components/CommentsModal';
 
 interface PayrollTabProps {
   onRunPayroll: () => void;
+  /** Which off-cycle run this list shows. Defaults to the off-weekend run. */
+  runType?: 'weekend' | 'special' | 'monthly';
 }
 
 const calculatePayPeriods = () => {
@@ -73,7 +75,7 @@ const calculatePayPeriods = () => {
   return periods[1];
 };
 
-const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
+const WeekendPayrollTab = ({ onRunPayroll, runType = 'weekend' }: PayrollTabProps) => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
@@ -401,7 +403,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
   };
 
   const handleProcessBatch = (payroll: any) => {
-    navigate('/payroll/weekend', {
+    navigate(`/payroll/${runType}`, {
       state: {
         approvedBatch: {
           id: payroll.id,
@@ -477,7 +479,7 @@ const WeekendPayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
     .filter(payroll => {
       const matchesStatus = filterStatus === 'all' || payroll.status.toLowerCase() === filterStatus;
       const matchesType = filterType === 'all' || payroll.period_type.toLowerCase() === filterType.toLowerCase();
-      const matchesRunType = payroll.run_type === 'weekend';
+      const matchesRunType = payroll.run_type === runType;
       return matchesStatus && matchesType && matchesRunType;
     })
     .sort((a, b) => {

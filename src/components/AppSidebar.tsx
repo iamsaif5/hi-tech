@@ -46,8 +46,10 @@ const AppSidebar = () => {
       label: 'Payroll',
       icon: HandCoins,
       items: [
-        { id: 'general-payroll', label: 'General Payroll', path: '/payroll/general' },
-        { id: 'weekend-payroll', label: 'Weekend Payroll', path: '/payroll/weekend' },
+        { id: 'general-payroll', label: 'Fortnight Payroll', path: '/payroll/general' },
+        { id: 'weekend-payroll', label: 'Off Weekend Payroll', path: '/payroll/weekend' },
+        { id: 'special-payroll', label: 'Special Payroll', path: '/payroll/special' },
+        { id: 'monthly-payroll', label: 'Monthly Payroll', path: '/payroll/monthly' },
         // Hidden from viewers (ViewerRoute will bounce them anyway).
       ],
     },

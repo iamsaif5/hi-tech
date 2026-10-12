@@ -29,7 +29,21 @@ interface ApprovedBatchWeekend {
   status?: string | null;
 }
 
-const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: () => void; onComplete: () => void; approvedBatch?: ApprovedBatchWeekend }) => {
+export type OffCycleRunType = 'weekend' | 'special' | 'monthly';
+
+/** Labels and behaviour that differ between the three off-cycle runs. */
+const RUN_META: Record<OffCycleRunType, { title: string; presets: boolean; allDays: boolean }> = {
+  // Fri/Sat/Sun presets, and only those days are paid unless the operator ticks
+  // "include all days".
+  weekend: { title: 'Off Weekend', presets: true, allDays: false },
+  // A public holiday or back pay — an explicit date range, every day paid.
+  special: { title: 'Special', presets: false, allDays: true },
+  // The handful of staff paid once a month.
+  monthly: { title: 'Monthly', presets: false, allDays: true },
+};
+
+const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'weekend' }: { onBack: () => void; onComplete: () => void; approvedBatch?: ApprovedBatchWeekend; runType?: OffCycleRunType }) => {
+  const runMeta = RUN_META[runType];
   const { toast } = useToast();
   const { user } = useAuth();
   const canSubmit = user?.role !== 'viewer';
@@ -40,7 +54,9 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
   /* const [payrollCalculations, setPayrollCalculations] = useState<PayrollCalculation[]>([]); */
   const [payRollInfo, setPayRollInfo] = useState<any>([]);
   const [availablePeriods, setAvailablePeriods] = useState<any[]>([]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
+    RUN_META[runType].presets ? '' : 'custom',
+  );
   const [selectedStaffType, setSelectedStaffType] = useState<string>('permanent');
   const [selectedCompany, setSelectedCompany] = useState<string>('hitec');
   const [payPeriod, setPayPeriod] = useState({
@@ -58,7 +74,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
   const [accountingLoading, setAccountingLoading] = useState(false);
 
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
-    `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}${includeAllDays ? '&include_all_days=true' : ''}`,
+    `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}${includeAllDays || runMeta.allDays ? '&include_all_days=true' : ''}&run_type=${runType}`,
     {
       enabled: !!payPeriod?.start_date && !!payPeriod?.end_date,
     },
@@ -66,7 +82,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
 
   const payrollQuery =
     currentStep >= 3 && selectedEmployees.length > 0
-      ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}${includeAllDays ? '&include_all_days=true' : ''}`
+      ? `/atg/attendance/staff-weekend-payroll-details/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod.start_date}&end_date=${payPeriod.end_date}&staff_ids=${selectedEmployees.map((e: any) => e.id).join(',')}${includeAllDays || runMeta.allDays ? '&include_all_days=true' : ''}&run_type=${runType}`
       : '';
 
   const { data: payrollDetails, isLoading: payrollLoading } = useFetch(payrollQuery, { enabled: !!payrollQuery });
@@ -126,7 +142,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
     const loadPeriods = async () => {
       try {
         // ✅ Use your local calculatePayPeriods() function
-        const calculatedPeriods = calculatePayPeriods();
+        const calculatedPeriods = runMeta.presets ? calculatePayPeriods() : [];
 
         // Set all available periods (previous, current, upcoming)
         setAvailablePeriods(calculatedPeriods);
@@ -1008,7 +1024,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
     const payload = {
       start_date: payPeriod.start_date,
       end_date: payPeriod.end_date,
-      type: 'weekend',
+      type: runType,
       factory: selectedCompany,
       staff_type: selectedStaffType,
       records: payRollInfo.map(
@@ -1074,7 +1090,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch }: { onBack: 
             Back
           </Button>
           <div>
-            <h1 className="text-xl font-bold">Run Payroll (Weekend)</h1>
+            <h1 className="text-xl font-bold">Run Payroll ({runMeta.title})</h1>
             <p className="text-sm text-muted-foreground">
               {payPeriod.start_date} to {payPeriod.end_date}
             </p>

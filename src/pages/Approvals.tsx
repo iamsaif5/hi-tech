@@ -33,8 +33,10 @@ interface ApprovalRequest {
 const TYPE_LABELS: Record<string, string> = {
   loan: 'Loan',
   bonus: 'Bonus',
-  general_payroll: 'General Payroll',
-  weekend_payroll: 'Weekend Payroll',
+  general_payroll: 'Fortnight Payroll',
+  weekend_payroll: 'Off Weekend Payroll',
+  special_payroll: 'Special Payroll',
+  monthly_payroll: 'Monthly Payroll',
   wage_request: 'Wage Request',
 };
 
@@ -344,8 +346,10 @@ const ApprovalsPage = () => {
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="loan">Loan</SelectItem>
             <SelectItem value="bonus">Bonus (legacy)</SelectItem>
-            <SelectItem value="general_payroll">General Payroll</SelectItem>
-            <SelectItem value="weekend_payroll">Weekend Payroll</SelectItem>
+            <SelectItem value="general_payroll">Fortnight Payroll</SelectItem>
+            <SelectItem value="weekend_payroll">Off Weekend Payroll</SelectItem>
+            <SelectItem value="special_payroll">Special Payroll</SelectItem>
+            <SelectItem value="monthly_payroll">Monthly Payroll</SelectItem>
             <SelectItem value="wage_request">Wage Request</SelectItem>
           </SelectContent>
         </Select>

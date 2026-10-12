@@ -8,6 +8,8 @@ import LoginPage from './pages/Login';
 import SignupPage from './pages/Signup';
 import NotFound from './pages/NotFound';
 import WeekendPayroll from './pages/WeekendPayroll';
+import SpecialPayroll from './pages/SpecialPayroll';
+import MonthlyPayroll from './pages/MonthlyPayroll';
 import GeneralPayroll from './pages/GeneralPayroll';
 import StaffPage from './pages/Staff';
 import Dashboard from './pages/Dashboard';
@@ -119,6 +121,8 @@ const AppRoutes = () => {
         </Route>
         <Route path="/payroll/general" element={<GeneralPayroll />} />
         <Route path="/payroll/weekend" element={<WeekendPayroll />} />
+        <Route path="/payroll/special" element={<SpecialPayroll />} />
+        <Route path="/payroll/monthly" element={<MonthlyPayroll />} />
         <Route path="/staff/payroll-batches/:id/slips" element={<PayrollBatchSlips />} />
         <Route path="/approvals" element={<ApprovalsPage />} />
       </Route>

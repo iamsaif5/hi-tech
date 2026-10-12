@@ -11,8 +11,10 @@ const Layout = () => {
     const path = location.pathname;
     if (path === '/') return 'Dashboard';
     if (path.startsWith('/staff')) return 'Staff';
-    if (path.startsWith('/payroll/general')) return 'General Payroll';
-    if (path.startsWith('/payroll/weekend')) return 'Weekend Payroll';
+    if (path.startsWith('/payroll/general')) return 'Fortnight Payroll';
+    if (path.startsWith('/payroll/weekend')) return 'Off Weekend Payroll';
+    if (path.startsWith('/payroll/special')) return 'Special Payroll';
+    if (path.startsWith('/payroll/monthly')) return 'Monthly Payroll';
     if (path.startsWith('/clients')) return 'Clients';
     if (path.startsWith('/orders')) return 'Orders';
     if (path.startsWith('/operations')) return 'Operations';

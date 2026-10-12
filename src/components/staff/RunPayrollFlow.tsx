@@ -700,7 +700,7 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
           <span className="mt-0.5 text-lg">⚠️</span>
           <div>
             <p className="font-semibold">Weekend Payroll not saved for this period</p>
-            <p className="text-sm">Weekend hours have not been deducted. Save the Weekend Payroll for this date range first, then reload General Payroll to apply the correct deductions.</p>
+            <p className="text-sm">Off-cycle hours have not been deducted. Save the Off Weekend, Special or Monthly payroll for this date range first, then reload the Fortnight Payroll to apply the correct deductions.</p>
           </div>
         </div>
       )}

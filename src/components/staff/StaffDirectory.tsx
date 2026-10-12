@@ -23,15 +23,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Mail, DollarSign, Paperclip, X, FileText, TrendingUp, UserX, UserCheck, Trash2 } from 'lucide-react';
+import { Plus, Search, TrendingUp, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import DocumentManager, { uploadDocuments } from '@/components/documents/DocumentManager';
+import StaffDetailsDialog from '@/components/staff/StaffDetailsDialog';
 import { Textarea } from '../ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -142,23 +141,12 @@ const StaffDirectory = () => {
   // clear selection on filter change is handled inline via setSelectedIds([])
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [payrollHistory] = useState([]);
-  const [timeRecords] = useState([]);
-  const [loanDetails] = useState([]);
-  const [showLoanDialog, setShowLoanDialog] = useState(false);
   const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
   // Files picked before the staff member exists; uploaded once it has an id.
   const [newStaffFiles, setNewStaffFiles] = useState<File[]>([]);
   const [savingNewStaff, setSavingNewStaff] = useState(false);
   const [showEditStaffDialog, setShowEditStaffDialog] = useState(false);
   const [editStaffId, setEditStaffId] = useState<string | null>(null);
-  const [loanForm, setLoanForm] = useState({
-    loan_type: '',
-    original_amount: '',
-    monthly_payment: '',
-    start_date: '',
-    notes: '',
-  });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filterAbsconded, setFilterAbsconded] = useState<'all' | 'active' | 'absconded'>('active');
   const [abscondId, setAbscondId] = useState<string | null>(null);
@@ -381,9 +369,6 @@ const StaffDirectory = () => {
     setShowDetails(true);
   };
 
-  const handleAddLoan = () => {
-    toast({ title: 'Info', description: 'Loan functionality is temporarily disabled.' });
-  };
 
   const handleAddNewStaff = addForm.handleSubmit((data) => {
     setSavingNewStaff(true);
@@ -1156,386 +1141,13 @@ const StaffDirectory = () => {
         </div>
       </div>
 
-      {/* Employee Details Modal */}
-      <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-          {selectedEmployee && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                      {(selectedEmployee as any).first_name} {(selectedEmployee as any).last_name}
-                    </h1>
-                    <p className="text-gray-600">
-                      {(selectedEmployee as any).employee_number} • {(selectedEmployee as any).department || 'Unassigned'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={(selectedEmployee as any).is_active ? 'default' : 'secondary'}>
-                    {(selectedEmployee as any).is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-              </div>
-
-              <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="clean-tabs">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="contact">Contact & Bank</TabsTrigger>
-                  <TabsTrigger value="hours">Hours</TabsTrigger>
-                  <TabsTrigger value="payslips">Payslips</TabsTrigger>
-                  <TabsTrigger value="loans">Loans</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-700">Employee Number</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{(selectedEmployee as any).employee_number}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-700">Department</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{(selectedEmployee as any).department || 'Unassigned'}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-700">Hourly Rate</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{formatCurrency((selectedEmployee as any).hourly_rate)}/hr</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-700">Start Date</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-lg font-semibold text-gray-900">{formatDate((selectedEmployee as any).hire_date)}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Employment Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Employee Type</p>
-                          <p className="text-gray-900">{(selectedEmployee as any).employee_type}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Factory Location</p>
-                          <p className="text-gray-900">{(selectedEmployee as any).factory}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Position</p>
-                          <p className="text-gray-900">{(selectedEmployee as any).position || 'Not specified'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Clock Number</p>
-                          <p className="text-gray-900">{(selectedEmployee as any).clock_number || 'N/A'}</p>
-                        </div>
-                      </div>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(() => { const emp = selectedEmployee as any; return emp?.is_absconded ? (
-                        <div className="mt-3 rounded-md border border-orange-200 bg-orange-50 p-3 space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <UserX className="h-4 w-4 text-orange-500" />
-                            <p className="text-sm font-semibold text-orange-700">Absconded</p>
-                            {emp.absconded_date && (
-                              <span className="text-xs text-orange-500 ml-auto">Since {fmtDate(emp.absconded_date)}</span>
-                            )}
-                          </div>
-                          {emp.absconded_reason ? (
-                            <p className="text-sm text-orange-800">{emp.absconded_reason}</p>
-                          ) : (
-                            <p className="text-xs text-orange-400 italic">No reason recorded</p>
-                          )}
-                          {emp.reactivated_date && (
-                            <p className="text-xs text-gray-500">Last reactivated: {fmtDate(emp.reactivated_date)}</p>
-                          )}
-                        </div>
-                      ) : null; })()}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="contact" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Mail className="h-5 w-5" />
-                          Contact Information
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <Label>Email Address</Label>
-                          <p className="text-gray-900">{(selectedEmployee as any).email || 'No email on file'}</p>
-                        </div>
-                        <div>
-                          <Label>Phone Number</Label>
-                          <p className="text-gray-900">{(selectedEmployee as any).phone_number || 'No phone on file'}</p>
-                        </div>
-                        <div>
-                          <Label>Address</Label>
-                          <p className="text-gray-900">{(selectedEmployee as any).address || 'Not provided'}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <DollarSign className="h-5 w-5" />
-                          Banking Information
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <Label>Account Number</Label>
-                          <p className="text-gray-900">{(selectedEmployee as any).bank_account_number || 'Not provided'}</p>
-                        </div>
-                        <div>
-                          <Label>Branch Code</Label>
-                          <p className="text-gray-900">{(selectedEmployee as any).bank_branch_code || 'Not provided'}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="hours" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Time Records (Last 30 Days)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Clock In</TableHead>
-                            <TableHead>Clock Out</TableHead>
-                            <TableHead>Total Hours</TableHead>
-                            <TableHead>Overtime</TableHead>
-                            <TableHead>Late (mins)</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {timeRecords.length > 0 ? (
-                            (timeRecords as any[]).map((record: any) => (
-                              <TableRow key={record.id}>
-                                <TableCell>{formatDate(record.date)}</TableCell>
-                                <TableCell>{record.clock_in || 'N/A'}</TableCell>
-                                <TableCell>{record.clock_out || 'N/A'}</TableCell>
-                                <TableCell>{record.total_hours || '0'}</TableCell>
-                                <TableCell>{record.overtime_hours || '0'}</TableCell>
-                                <TableCell>{record.late_minutes || '0'}</TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center text-muted-foreground">
-                                No time records found
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="payslips" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Payroll History (Last 12 Months)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Period</TableHead>
-                            <TableHead>Regular Hours</TableHead>
-                            <TableHead>Gross Pay</TableHead>
-                            <TableHead>Deductions</TableHead>
-                            <TableHead>Net Pay</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {payrollHistory.length > 0 ? (
-                            (payrollHistory as any[]).map((record: any) => (
-                              <TableRow key={record.id}>
-                                <TableCell>{record.payroll_periods?.period_name || 'N/A'}</TableCell>
-                                <TableCell>{record.regular_hours || '0'}</TableCell>
-                                <TableCell>{formatCurrency(record.gross_pay)}</TableCell>
-                                <TableCell>{formatCurrency(record.total_deductions)}</TableCell>
-                                <TableCell className="font-semibold">{formatCurrency(record.net_pay)}</TableCell>
-                                <TableCell>
-                                  <Badge variant={record.payment_status === 'paid' ? 'default' : 'secondary'}>
-                                    {record.payment_status || 'pending'}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center text-muted-foreground">
-                                No payroll records found
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="loans" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Employee Loans</CardTitle>
-                        <Button size="sm" onClick={() => setShowLoanDialog(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Loan
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {loanDetails.length > 0 ? (
-                          (loanDetails as any[]).map((loan: any) => (
-                            <div key={loan.id} className="p-4 rounded-lg border-l-4 border-l-blue-500 bg-blue-50">
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700">Loan Type</p>
-                                  <p className="font-medium text-gray-900">{loan.loan_type}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700">Original Amount</p>
-                                  <p className="text-gray-900">{formatCurrency(loan.original_amount)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700">Outstanding Balance</p>
-                                  <p className="font-semibold text-red-600">{formatCurrency(loan.outstanding_balance)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700">Monthly Payment</p>
-                                  <p className="text-gray-900">{formatCurrency(loan.monthly_payment)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700">Start Date</p>
-                                  <p className="text-gray-900">{formatDate(loan.start_date)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700">Status</p>
-                                  <Badge variant={loan.status === 'active' ? 'destructive' : 'default'}>{loan.status}</Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center text-muted-foreground py-8">
-                            <p>No loans found for this employee</p>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Loan Dialog */}
-      <Dialog open={showLoanDialog} onOpenChange={setShowLoanDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Employee Loan</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="loan_type">Loan Type</Label>
-              <Select value={loanForm.loan_type} onValueChange={value => setLoanForm({ ...loanForm, loan_type: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select loan type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="salary_advance">Salary Advance</SelectItem>
-                  <SelectItem value="equipment_loan">Equipment Loan</SelectItem>
-                  <SelectItem value="emergency_loan">Emergency Loan</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="original_amount">Loan Amount (R)</Label>
-              <Input
-                id="original_amount"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={loanForm.original_amount}
-                onChange={e => setLoanForm({ ...loanForm, original_amount: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="monthly_payment">Monthly Payment (R)</Label>
-              <Input
-                id="monthly_payment"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={loanForm.monthly_payment}
-                onChange={e => setLoanForm({ ...loanForm, monthly_payment: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="start_date">Start Date</Label>
-              <Input
-                id="start_date"
-                type="date"
-                value={loanForm.start_date}
-                onChange={e => setLoanForm({ ...loanForm, start_date: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="notes">Notes (Optional)</Label>
-              <Textarea
-                id="notes"
-                placeholder="Additional notes about the loan..."
-                value={loanForm.notes}
-                onChange={e => setLoanForm({ ...loanForm, notes: e.target.value })}
-              />
-            </div>
-            <div className="flex gap-2 pt-4">
-              <Button variant="outline" onClick={() => setShowLoanDialog(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleAddLoan} className="flex-1">
-                Add Loan
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Employee Details Modal — its tabs load their own data, so it
+          lives in its own component. */}
+      <StaffDetailsDialog
+        employee={selectedEmployee}
+        open={showDetails}
+        onOpenChange={setShowDetails}
+      />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2, CheckCircle, RotateCcw } from 'lucide-react';
+import { FileDown, Loader2, CheckCircle, RotateCcw, CalendarOff } from 'lucide-react';
 import useFetch from '@/hooks/useFetch';
 import { downloadFile, postData } from '@/lib/Api';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,9 @@ export interface WageBatch {
   created_at: string;
   line_count: number;
   total_amount: string;
+  recurrence: string;
+  /** Null while a recurring arrangement is still running. */
+  active_until: string | null;
 }
 
 export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
@@ -104,6 +107,19 @@ const WageBatchTable: React.FC<Props> = ({ paymentType, reloadKey = 0 }) => {
     }
   };
 
+  const endRecurrence = async (batch: WageBatch) => {
+    if (!window.confirm(
+      'Stop this recurring payment? Past payments are kept — it just stops running.',
+    )) return;
+    try {
+      await postData({ url: `staff/wage-requests/${batch.id}/end-recurrence/`, data: {} });
+      toast({ title: 'Recurring payment ended' });
+      refetch?.();
+    } catch (e: any) {
+      fail('Could not end it')(e);
+    }
+  };
+
   const approve = async (batch: WageBatch) => {
     try {
       await postData({ url: `staff/wage-requests/${batch.id}/approve/`, data: {} });
@@ -142,6 +158,7 @@ const WageBatchTable: React.FC<Props> = ({ paymentType, reloadKey = 0 }) => {
               <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Staff</th>
               <th className="text-right py-3 px-4 text-xs font-medium text-foreground">Amount</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Paid on</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Repeats</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Reason</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Submitted by</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Approved by</th>
@@ -166,6 +183,17 @@ const WageBatchTable: React.FC<Props> = ({ paymentType, reloadKey = 0 }) => {
                     'Off weekend payroll'
                   ) : (
                     <span className="text-muted-foreground">Paid separately</span>
+                  )}
+                </td>
+                <td className="py-2 px-4 text-xs">
+                  {b.recurrence === 'every_fortnight' ? (
+                    b.active_until ? (
+                      <span className="text-muted-foreground">Ended {b.active_until}</span>
+                    ) : (
+                      <span className="text-emerald-700">Every fortnight</span>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground">Once off</span>
                   )}
                 </td>
                 <td className="py-2 px-4 text-xs">{b.custom_reason || '—'}</td>
@@ -202,6 +230,18 @@ const WageBatchTable: React.FC<Props> = ({ paymentType, reloadKey = 0 }) => {
                           Recall
                         </Button>
                       </>
+                    )}
+                    {isAdmin && b.recurrence === 'every_fortnight' && !b.active_until && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1 border-amber-200 text-amber-700 hover:bg-amber-50"
+                        onClick={() => endRecurrence(b)}
+                        title="Stop this repeating — past payments are kept"
+                      >
+                        <CalendarOff className="h-3.5 w-3.5" />
+                        End
+                      </Button>
                     )}
                     {(b.status === 'approved' || b.status === 'partially_approved') && (
                       <Button

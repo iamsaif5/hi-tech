@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/utils';
-import { postData, downloadFile, fetchData } from '@/lib/Api';
+import { postData, putData, downloadFile, fetchData } from '@/lib/Api';
 import { generateAccountingPDF } from '@/lib/accountingPDF';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +44,11 @@ const RUN_META: Record<OffCycleRunType, { title: string; presets: boolean; allDa
 
 const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'weekend' }: { onBack: () => void; onComplete: () => void; approvedBatch?: ApprovedBatchWeekend; runType?: OffCycleRunType }) => {
   const runMeta = RUN_META[runType];
+  // Per-shift bonus (Lorraine: "50 rand per shift ... two days, 100 rand").
+  // Seeded from the saved default so she doesn't retype it each run.
+  const [shiftBonus, setShiftBonus] = useState<string>('');
+  const [savingShiftBonus, setSavingShiftBonus] = useState(false);
+  const { data: shiftBonusSetting } = useFetch<any>('staff/settings/default_shift_bonus/');
   const { toast } = useToast();
   const { user } = useAuth();
   const canSubmit = user?.role !== 'viewer';
@@ -72,6 +77,10 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
   const [finalized, setFinalized] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number; errors: string[] } | null>(null);
   const [accountingLoading, setAccountingLoading] = useState(false);
+
+  useEffect(() => {
+    if (shiftBonusSetting?.value) setShiftBonus(String(shiftBonusSetting.value));
+  }, [shiftBonusSetting?.value]);
 
   const { data: wageReportData, isLoading: wageReportLoading } = useFetch(
     `/atg/attendance/staff-weekend-wage-report/?factory=${selectedCompany}&staff_type=${selectedStaffType}&start_date=${payPeriod?.start_date}&end_date=${payPeriod?.end_date}${includeAllDays || runMeta.allDays ? '&include_all_days=true' : ''}&run_type=${runType}`,
@@ -234,6 +243,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
           total_paid_hours: emp.paid_hours,
 
           base_gross_salary_from_api: emp.gross_salary || 0, // Store original API gross for recalculations
+          days_paid: emp.days_paid ?? 0,
           bonus_pay: bonus_pay,
           loan_deductions: loan_deductions,
           other_deductions: other_deductions, // Initialized to 0
@@ -609,6 +619,43 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
         return calc;
       }),
     );
+  };
+
+  /** Set every row's bonus to the per-shift amount times the shifts they worked. */
+  const applyShiftBonus = () => {
+    const perShift = parseFloat(shiftBonus);
+    if (!(perShift >= 0)) {
+      toast({ title: 'Enter a bonus amount', variant: 'destructive' });
+      return;
+    }
+    setPayRollInfo(prev =>
+      prev.map(calc => {
+        const bonus = perShift * (calc.days_paid || 0);
+        const gross = calc.base_gross_salary_from_api + bonus;
+        return { ...calc, bonus_pay: bonus, gross_pay: gross, net_pay: gross - (calc.other_deductions || 0) };
+      }),
+    );
+    toast({
+      title: 'Shift bonus applied',
+      description: `R${perShift.toFixed(2)} per shift worked.`,
+    });
+  };
+
+  /** Remember the amount so the next run opens with it already filled in. */
+  const saveShiftBonusDefault = async () => {
+    setSavingShiftBonus(true);
+    try {
+      await putData({ url: 'staff/settings/default_shift_bonus/', data: { value: shiftBonus } });
+      toast({ title: 'Saved as the default shift bonus' });
+    } catch (e: any) {
+      toast({
+        title: 'Could not save the default',
+        description: e?.response?.data?.detail || e?.response?.data?.value || e?.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingShiftBonus(false);
+    }
   };
 
   // Update loans for employee

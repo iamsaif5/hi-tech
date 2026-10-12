@@ -35,6 +35,11 @@ const BONUS_REASONS = [
 const CAN_TARGET_PAYROLL: Record<FlowPaymentType, boolean> = {
   bonus: true, other: true, transport: true, fuel: true, airtime: false,
 };
+/** Transport and fuel are often standing arrangements, not one-offs. */
+const CAN_RECUR: Record<FlowPaymentType, boolean> = {
+  bonus: false, other: false, transport: true, fuel: true, airtime: false,
+};
+
 /** 'other' must always name a run; transport/fuel may opt in. */
 const MUST_TARGET_PAYROLL: Record<FlowPaymentType, boolean> = {
   bonus: true, other: true, transport: false, fuel: false, airtime: false,
@@ -75,6 +80,7 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
     MUST_TARGET_PAYROLL[paymentType] ? 'general' : '',
   );
   const [bonusReason, setBonusReason] = useState('performance');
+  const [recurrence, setRecurrence] = useState<'once_off' | 'every_fortnight'>('once_off');
   const [customReason, setCustomReason] = useState('');
   const [defaultAmount, setDefaultAmount] = useState('');
   const [search, setSearch] = useState('');
@@ -219,6 +225,7 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
           })),
         };
         if (CAN_TARGET_PAYROLL[paymentType] && targetPayroll) payload.target_payroll = targetPayroll;
+        if (CAN_RECUR[paymentType]) payload.recurrence = recurrence;
         if (paymentType === 'other') payload.custom_reason = customReason.trim();
         await postData({ url: 'staff/wage-requests/', data: payload });
       }
@@ -318,6 +325,25 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
                 {offWeekend && (
                   <p className="text-xs text-muted-foreground mt-1.5">
                     Off weekend payroll is paid from the app and is never sent to SimplePay.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {CAN_RECUR[paymentType] && (
+              <div>
+                <Label className="text-sm">How often</Label>
+                <Select value={recurrence} onValueChange={v => setRecurrence(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="once_off">Once off</SelectItem>
+                    <SelectItem value="every_fortnight">Every fortnight</SelectItem>
+                  </SelectContent>
+                </Select>
+                {recurrence === 'every_fortnight' && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Keeps running until an admin ends it. Ending it stops future payments and
+                    keeps the record of what was already paid.
                   </p>
                 )}
               </div>

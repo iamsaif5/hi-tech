@@ -681,6 +681,13 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
     );
   };
 
+  /** Why this person's pay differs this run — carried onto the report. */
+  const updateComment = (atgClockNumber: string, comment: string) => {
+    setPayRollInfo(prev =>
+      prev.map(calc => (calc.atg_clock_number === atgClockNumber ? { ...calc, comment } : calc)),
+    );
+  };
+
   const updateOtherDeductions = (atgClockNumber: string, otherDeductionsAmount: number) => {
     setPayRollInfo(prev =>
       prev.map(calc => {
@@ -763,6 +770,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
                 <TableHead>Other Deductions</TableHead>
                 <TableHead>Loans</TableHead>
                 <TableHead>Net Salary</TableHead>
+                <TableHead>Comment</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -817,6 +825,15 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
                     </TableCell> */}
                     <TableCell className="font-medium">{formatCurrency(calc.loan_deductions)}</TableCell>
                     <TableCell className="font-bold text-green-600">{formatCurrency(calc.net_pay)}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="text"
+                        className="w-48"
+                        placeholder="Reason for a change…"
+                        value={calc.comment ?? ''}
+                        onChange={e => updateComment(calc.atg_clock_number, e.target.value)}
+                      />
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -1086,6 +1103,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
           other_deductions?: number;
           loan_deductions?: number;
           net_pay?: number;
+          comment?: string;
         }) => ({
           staff_id: calc.id,
           capped_hours: calc.capped_hours ?? 0,
@@ -1097,6 +1115,7 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
           other_deductions: calc.other_deductions ?? 0,
           loans: calc.loan_deductions ?? 0,
           net_salary: calc.net_pay ?? 0,
+          comment: calc.comment ?? '',
         }),
       ),
     };

@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
 import { useNavigate } from 'react-router-dom';
 import CommentsModal from '@/components/CommentsModal';
+import PayrollSummaryDialog from '@/components/payroll/PayrollSummaryDialog';
 
 interface PayrollTabProps {
   onRunPayroll: () => void;
@@ -576,6 +577,7 @@ const WeekendPayrollTab = ({ onRunPayroll, runType = 'weekend' }: PayrollTabProp
                 Run Payroll
               </Button>
             )}
+            <PayrollSummaryDialog runType={runType} />
             <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
               <Filter className="h-4 w-4 mr-2" />
               Filter

@@ -20,6 +20,7 @@ import AccountingSummaryPrint from '@/components/staff/AccountingSummaryPrint';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
 import CommentsModal from '@/components/CommentsModal';
+import PayrollSummaryDialog from '@/components/payroll/PayrollSummaryDialog';
 
 interface PayrollTabProps {
   onRunPayroll: () => void;
@@ -572,6 +573,7 @@ const PayrollTab = ({ onRunPayroll }: PayrollTabProps) => {
                 Run Payroll
               </Button>
             )}
+            <PayrollSummaryDialog runType="general" />
             <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
               <Filter className="h-4 w-4 mr-2" />
               Filter

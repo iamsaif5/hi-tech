@@ -25,7 +25,7 @@ import { usePost } from '@/hooks/usePost';
 import { usePut } from '@/hooks/usePut';
 import { fetchData, postData, deleteData, downloadFile } from '@/lib/Api';
 import CommentsModal from '@/components/CommentsModal';
-import DocumentManager from '@/components/documents/DocumentManager';
+import DocumentManager, { uploadDocuments } from '@/components/documents/DocumentManager';
 import WageBatchTable, { type WagePaymentType } from './loans-bonuses/WageBatchTable';
 import NewPaymentFlow, { type FlowPaymentType } from './loans-bonuses/NewPaymentFlow';
 
@@ -132,6 +132,15 @@ const LoansAndBonusesTab = () => {
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
   const [commentsModal, setCommentsModal] = useState<{ approvalId: number; itemLabel: string; itemStatus: string } | null>(null);
   const [loanStaffPickerOpen, setLoanStaffPickerOpen] = useState(false);
+  // Files picked before the loan exists; uploaded once it has an id.
+  const [loanFiles, setLoanFiles] = useState<File[]>([]);
+  const [savingLoan, setSavingLoan] = useState(false);
+
+  // Loans are for permanent staff only, so casuals never reach the picker.
+  // Absconded staff are left out too — there is no payroll to recover from.
+  const loanEligibleStaff = (staffMembers || []).filter(
+    (s: any) => s.employee_type === 'permanent' && !s.is_absconded,
+  );
 
   const [loanForm, setLoanForm] = useState({
     employee_id: '',
@@ -196,6 +205,7 @@ const LoansAndBonusesTab = () => {
   const handleLoanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setSavingLoan(true);
     try {
       const loanData = {
         staff_member: parseInt(loanForm.employee_id),
@@ -208,24 +218,48 @@ const LoansAndBonusesTab = () => {
         notes: loanForm.notes
       };
 
+      let loanId = editingLoan?.id ?? null;
       if (editingLoan) {
         await putLoan({
           url: `staff/loans/${editingLoan.id}/`,
           data: loanData
         });
       } else {
-        await postLoan({
+        const created: any = await postLoan({
           url: 'staff/loans/',
           data: loanData
         });
+        loanId = Number(created?.id) || null;
       }
 
-      toast({
-        title: editingLoan ? 'Loan Updated' : 'Loan Submitted for Approval',
-        description: editingLoan ? 'Loan updated successfully.' : 'Awaiting approval before it takes effect.',
-      });
+      // A document needs a loan to belong to, so the upload happens here
+      // rather than being shown to the operator as a second step.
+      let failedDocs: string[] = [];
+      if (loanFiles.length) {
+        if (loanId) {
+          failedDocs = (await uploadDocuments('loan', loanId, loanFiles)).failed;
+        } else {
+          // Nothing came back to attach them to — say so rather than
+          // reporting a clean save and dropping the files.
+          failedDocs = loanFiles.map(f => f.name);
+        }
+      }
+
+      if (failedDocs.length) {
+        toast({
+          title: editingLoan ? 'Loan updated, some documents failed' : 'Loan saved, some documents failed',
+          description: `${failedDocs.join(', ')} did not upload. Attach them by editing the loan.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: editingLoan ? 'Loan Updated' : 'Loan Submitted for Approval',
+          description: editingLoan ? 'Loan updated successfully.' : 'Awaiting approval before it takes effect.',
+        });
+      }
 
       setShowLoanDialog(false);
+      setLoanFiles([]);
       setEditingLoan(null);
       setLoanForm({
         employee_id: '',
@@ -238,13 +272,21 @@ const LoansAndBonusesTab = () => {
         notes: ''
       });
       refetchLoans();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving loan:', error);
+      const data = error?.response?.data;
+      // Surface the server's reason — "X is a casual" is the one the
+      // operator most needs to read.
+      const detail = Array.isArray(data?.staff_member)
+        ? data.staff_member[0]
+        : data?.detail || data?.non_field_errors?.[0];
       toast({
         title: "Error",
-        description: "Failed to save loan",
+        description: detail || "Failed to save loan",
         variant: "destructive",
       });
+    } finally {
+      setSavingLoan(false);
     }
   };
 
@@ -424,7 +466,16 @@ const LoansAndBonusesTab = () => {
               <DollarSign className="h-4 w-4" />
               Employee Loans
             </h3>
-            <Dialog open={showLoanDialog} onOpenChange={setShowLoanDialog}>
+            <Dialog
+              open={showLoanDialog}
+              onOpenChange={open => {
+                // Don't let it close mid-upload — the documents would be lost
+                // after the loan had already been created.
+                if (savingLoan) return;
+                if (!open) setLoanFiles([]);
+                setShowLoanDialog(open);
+              }}
+            >
               {canWrite && (
               <DialogTrigger asChild>
                 <Button onClick={() => setEditingLoan(null)}>
@@ -440,6 +491,9 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleLoanSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Permanent staff only — casuals cannot take a loan.
+                    </p>
                     <Popover open={loanStaffPickerOpen} onOpenChange={setLoanStaffPickerOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
@@ -453,6 +507,8 @@ const LoansAndBonusesTab = () => {
                             {loanForm.employee_id
                               ? staffMembers?.find((s) => s.id.toString() === loanForm.employee_id)?.full_name
                               : "Select staff member"}
+                            {/* Looked up in the unfiltered list so an existing
+                                casual loan still shows whose it is. */}
                           </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -461,9 +517,9 @@ const LoansAndBonusesTab = () => {
                         <Command>
                           <CommandInput placeholder="Search staff member..." />
                           <CommandList>
-                            <CommandEmpty>No staff member found.</CommandEmpty>
+                            <CommandEmpty>No permanent staff member found.</CommandEmpty>
                             <CommandGroup>
-                              {staffMembers?.map((staff) => (
+                              {loanEligibleStaff.map((staff) => (
                                 <CommandItem
                                   key={staff.id}
                                   value={staff.full_name}
@@ -588,22 +644,31 @@ const LoansAndBonusesTab = () => {
                     </div>
                   )}
 
-                    {/* Real uploads. The old dropzone here collected files
-                        into React state and never sent them, so nothing a user
-                        attached to a loan was ever stored. */}
+                    {/* Editing an existing loan uploads straight away. On a
+                        new loan there is no id yet, so the files are held and
+                        the submit handler uploads them once one exists. */}
                     <DocumentManager
                       ownerType="loan"
                       ownerId={editingLoan?.id ?? null}
                       label="Supporting Documents"
+                      pendingFiles={editingLoan ? undefined : loanFiles}
+                      onPendingFilesChange={editingLoan ? undefined : setLoanFiles}
                     />
 
                   <div className="flex gap-2">
                     {canWrite && editingLoan?.approval_status !== 'approved' && (
-                      <Button type="submit" className="flex-1">
-                        {editingLoan ? 'Update Loan' : 'Create Loan'}
+                      <Button type="submit" className="flex-1" disabled={savingLoan}>
+                        {savingLoan
+                          ? (loanFiles.length ? 'Saving and uploading…' : 'Saving…')
+                          : editingLoan ? 'Update Loan' : 'Create Loan'}
                       </Button>
                     )}
-                    <Button type="button" variant="outline" onClick={() => setShowLoanDialog(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={savingLoan}
+                      onClick={() => setShowLoanDialog(false)}
+                    >
                       Cancel
                     </Button>
                   </div>

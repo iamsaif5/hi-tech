@@ -252,6 +252,8 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
           total_paid_hours: emp.paid_hours,
 
           base_gross_salary_from_api: emp.gross_salary || 0, // Store original API gross for recalculations
+          // Shifts this run pays for, net of any the off-weekend run already paid.
+          days_paid: emp.days_paid ?? 0,
           bonus_pay: bonus_pay,
           loan_deductions: loan_deductions,
           other_deductions: other_deductions, // Initialized to 0
@@ -1088,6 +1090,9 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
           total_hours: calc.total_worked_hours ?? 0,
           weekend_hours: calc.total_weekend_hours ?? 0,
           paid_hours: calc.total_paid_hours ?? 0,
+          // Stored on the slip so a later fortnight run can subtract shifts an
+          // off-cycle run already paid, the same way it subtracts hours.
+          days_paid: calc.days_paid ?? 0,
           other_deductions: calc.other_deductions ?? 0,
           loans: calc.loan_deductions ?? 0,
           net_salary: calc.net_pay ?? 0,

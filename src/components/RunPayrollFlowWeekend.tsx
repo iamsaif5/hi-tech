@@ -1177,6 +1177,9 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
           total_hours: calc.total_worked_hours ?? 0,
           weekend_hours: calc.total_weekend_hours ?? 0,
           paid_hours: calc.total_paid_hours ?? 0,
+          // Stored on the slip so a later fortnight run can subtract shifts an
+          // off-cycle run already paid, the same way it subtracts hours.
+          days_paid: calc.days_paid ?? 0,
           other_deductions: calc.other_deductions ?? 0,
           loans: calc.loan_deductions ?? 0,
           net_salary: calc.net_pay ?? 0,

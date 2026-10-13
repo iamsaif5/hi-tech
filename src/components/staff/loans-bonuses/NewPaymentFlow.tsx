@@ -81,6 +81,10 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
   );
   const [bonusReason, setBonusReason] = useState('performance');
   const [recurrence, setRecurrence] = useState<'once_off' | 'every_fortnight'>('once_off');
+  // Bonuses repeat for a fixed number of pay runs rather than until stopped,
+  // so they carry a count instead of the transport/fuel 'until ended' model.
+  const [repeatPeriods, setRepeatPeriods] = useState<string>('');
+  const [perShift, setPerShift] = useState(false);
   const [syncToSimplePay, setSyncToSimplePay] = useState(true);
   const [customReason, setCustomReason] = useState('');
   const [defaultAmount, setDefaultAmount] = useState('');
@@ -210,6 +214,8 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
               reason: BONUS_REASONS.find(r => r.value === bonusReason)?.label || bonusReason,
               target_payroll: targetPayroll,
               bonus_reason: bonusReason,
+              recurrence_periods: repeatPeriods ? Number(repeatPeriods) : null,
+              per_shift: perShift,
               // The operator's choice, except where it cannot apply: an
               // off-weekend run never reaches SimplePay and a casual's pay
               // stays in the app. The backend enforces both regardless.
@@ -347,6 +353,45 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
                   <p className="text-xs text-muted-foreground mt-1.5">
                     Keeps running until an admin ends it. Ending it stops future payments and
                     keeps the record of what was already paid.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isBonus && (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <Label className="text-sm">Repeat for</Label>
+                  <Select value={repeatPeriods || 'once'} onValueChange={v => setRepeatPeriods(v === 'once' ? '' : v)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="once">Once only</SelectItem>
+                      {[2, 3, 4, 5, 6, 8, 10, 12].map(n => (
+                        <SelectItem key={n} value={String(n)}>{n} pay runs</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={perShift}
+                    onCheckedChange={v => setPerShift(Boolean(v))}
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm">
+                    Amount is a rate per shift
+                    <span className="block text-xs text-muted-foreground">
+                      Multiplied by the shifts each person actually worked, so two days at
+                      R50 pays R100. Leave unticked to pay the amount as entered.
+                    </span>
+                  </span>
+                </label>
+
+                {repeatPeriods && (
+                  <p className="text-xs text-muted-foreground">
+                    Approved once, then applied automatically to the next {repeatPeriods} runs of
+                    the payroll you chose above, and stopped after that. An admin can end it early.
                   </p>
                 )}
               </div>

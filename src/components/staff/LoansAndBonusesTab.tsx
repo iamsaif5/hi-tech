@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown, FileSpreadsheet, Truck, Smartphone, Fuel, MoreHorizontal } from 'lucide-react';
+import { Plus, Edit, Eye, DollarSign, Users, Calendar, Clock, Paperclip, X, FileText, MessageSquare, Loader2, Download, Trash2, FileDown, Check, ChevronsUpDown, FileSpreadsheet, Truck, Smartphone, Fuel, MoreHorizontal, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateBonusPDF } from '@/lib/bonusPDF';
 import { generateLoanPDF } from '@/lib/loanPDF';
@@ -101,6 +101,11 @@ interface Bonus {
   approved_at?: string;
   approved_by?: string;
   added_by?: string;
+  recurrence_periods?: number | null;
+  per_shift?: boolean;
+  times_applied?: number;
+  periods_remaining?: number;
+  cancelled_at?: string | null;
 }
 
 interface BonusDoc {
@@ -363,6 +368,26 @@ const LoansAndBonusesTab = () => {
       toast({
         title: 'Delete failed',
         description: err?.response?.data?.detail || 'Could not delete loan.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEndBonusRecurrence = async (bonus: Bonus) => {
+    const paid = bonus.times_applied ?? 0;
+    if (!window.confirm(
+      `Stop this repeating bonus for ${bonus.staff_member_name}?\n\n` +
+      `It has been paid on ${paid} of ${bonus.recurrence_periods} runs. ` +
+      `Future runs will skip it; what has already been paid stays on the record.`
+    )) return;
+    try {
+      await postData({ url: `staff/bonuses/${bonus.id}/end-recurrence/`, data: {} });
+      toast({ title: 'Repeating bonus ended' });
+      refetchBonuses();
+    } catch (e: any) {
+      toast({
+        title: 'Could not end it',
+        description: e?.response?.data?.error || e?.response?.data?.detail || e?.message,
         variant: 'destructive',
       });
     }
@@ -858,8 +883,24 @@ const LoansAndBonusesTab = () => {
                           <span className="text-muted-foreground">Historic</span>
                         )}
                       </td>
-                      <td className="py-2 px-4 text-xs">R{parseFloat(bonus.amount).toFixed(2)}</td>
-                      <td className="py-2 px-4 text-xs">{bonus.reason}</td>
+                      <td className="py-2 px-4 text-xs">
+                        R{parseFloat(bonus.amount).toFixed(2)}
+                        {bonus.per_shift && (
+                          <span className="block text-[10px] text-muted-foreground">per shift</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-4 text-xs">
+                        {bonus.reason}
+                        {/* A repeating bonus is paid over several runs, so the
+                            row has to say how far through it is. */}
+                        {bonus.recurrence_periods ? (
+                          <span className="block text-[10px] text-muted-foreground">
+                            {bonus.cancelled_at
+                              ? `Ended — paid ${bonus.times_applied ?? 0} of ${bonus.recurrence_periods}`
+                              : `Paid ${bonus.times_applied ?? 0} of ${bonus.recurrence_periods} runs`}
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="py-2 px-4">
                         <TooltipProvider>
                           <Tooltip>
@@ -906,6 +947,20 @@ const LoansAndBonusesTab = () => {
                                   {bonus.comment_count}
                                 </span>
                               )}
+                            </Button>
+                          )}
+                          {/* Only an admin can stop a live arrangement, and only
+                              while it still has runs left to pay. */}
+                          {isAdmin && !!bonus.recurrence_periods && !bonus.cancelled_at
+                            && (bonus.periods_remaining ?? 0) > 0 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-orange-600"
+                              title="End this repeating bonus"
+                              onClick={() => handleEndBonusRecurrence(bonus)}
+                            >
+                              <Ban className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           {isAdmin && (

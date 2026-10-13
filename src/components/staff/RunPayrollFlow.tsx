@@ -254,6 +254,10 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
           base_gross_salary_from_api: emp.gross_salary || 0, // Store original API gross for recalculations
           // Shifts this run pays for, net of any the off-weekend run already paid.
           days_paid: emp.days_paid ?? 0,
+          // Approved bonuses and standing arrangements the backend has already
+          // totalled for this run. Kept so the row can warn when the operator
+          // types less than is owed.
+          approved_bonus_from_api: bonus_pay,
           bonus_pay: bonus_pay,
           loan_deductions: loan_deductions,
           other_deductions: other_deductions, // Initialized to 0
@@ -759,6 +763,18 @@ const RunPayrollFlow = ({ onBack, onComplete, approvedBatch }: RunPayrollFlowPro
                         className="w-24 h-8 text-sm"
                         placeholder="0.00"
                       />
+                      {/* Saving less than is owed still consumes the approved
+                          bonus and a period of any standing arrangement, so
+                          the shortfall cannot be recovered. Editing stays
+                          allowed — it just stops being silent. The off-weekend
+                          run carries the same warning. */}
+                      {(calc?.approved_bonus_from_api || 0) > 0
+                        && (calc?.bonus_pay || 0) < (calc?.approved_bonus_from_api || 0) && (
+                        <p className="mt-1 w-28 text-[11px] leading-tight text-orange-600">
+                          {formatCurrency(calc.approved_bonus_from_api)} owed — the difference
+                          will be marked paid and cannot be recovered.
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell className="font-medium">{Math.floor(calc.total_worked_hours || 0)}h</TableCell>
                     <TableCell className="text-orange-600">{Math.floor(calc.total_weekend_hours || 0)}h</TableCell>

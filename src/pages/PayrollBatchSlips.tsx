@@ -33,6 +33,7 @@ const CSV_HEADERS = [
   'Loan Deduction',
   'Gross Salary',
   'Net Salary',
+  'Comment',
 ];
 
 interface Slip {
@@ -51,6 +52,7 @@ interface Slip {
   loan_deduction: string;
   gross_salary: string;
   net_salary: string;
+  comment?: string;
 }
 
 const LOAN_COLUMN = 'Loan Deduction';
@@ -70,6 +72,7 @@ const slipToRow = (slip: Slip, withLoans: boolean) => [
   ...(withLoans ? [slip.loan_deduction] : []),
   slip.gross_salary,
   slip.net_salary,
+  slip.comment ?? '',
 ];
 
 const toCSV = (rows: (string | number | null | undefined)[][], withLoans: boolean) => {
@@ -188,13 +191,17 @@ const PayrollBatchSlips = () => {
                 )}
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Gross</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Net Salary</th>
+                {/* Written during the run and only ever visible on the xlsx
+                    report until now — the operator could not read back what
+                    they had typed. */}
+                <th className="text-left py-3 px-4 text-xs font-medium text-foreground">Comment</th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {isLoading
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="border-b border-gray-100">
-                      {Array.from({ length: showLoans ? 14 : 13 }).map((_, j) => (
+                      {Array.from({ length: showLoans ? 15 : 14 }).map((_, j) => (
                         <td key={j} className="py-2 px-4">
                           <Skeleton className="h-4 w-20" />
                         </td>
@@ -225,6 +232,9 @@ const PayrollBatchSlips = () => {
                       )}
                       <td className="py-2 px-4 text-xs">{fmt(slip.gross_salary)}</td>
                       <td className="py-2 px-4 text-xs font-semibold text-green-600">{fmt(slip.net_salary)}</td>
+                      <td className="py-2 px-4 text-xs text-muted-foreground max-w-xs">
+                        {slip.comment || '—'}
+                      </td>
                     </tr>
                   ))}
             </tbody>

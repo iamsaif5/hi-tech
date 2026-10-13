@@ -30,7 +30,7 @@ interface Props {
 const PayrollSummaryDialog: React.FC<Props> = ({ runType, currentStart, currentEnd }) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [scope, setScope] = useState<Scope>('current');
+  const [scope, setScope] = useState<Scope>(currentStart ? 'current' : 'all');
   const [factory, setFactory] = useState('all');
   const [start, setStart] = useState(currentStart || '');
   const [end, setEnd] = useState(currentEnd || '');
@@ -96,7 +96,12 @@ const PayrollSummaryDialog: React.FC<Props> = ({ runType, currentStart, currentE
             <Select value={scope} onValueChange={v => setScope(v as Scope)}>
               <SelectTrigger className="mt-1 w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="current" disabled={!currentStart}>Current period</SelectItem>
+                {/* Shows the dates so it is clear which period "current" means. */}
+                <SelectItem value="current" disabled={!currentStart}>
+                  {currentStart && currentEnd
+                    ? `Current period (${currentStart} → ${currentEnd})`
+                    : 'Current period'}
+                </SelectItem>
                 <SelectItem value="custom">Custom period</SelectItem>
                 <SelectItem value="all">All time</SelectItem>
               </SelectContent>

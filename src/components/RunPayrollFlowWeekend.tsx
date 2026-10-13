@@ -244,6 +244,10 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
 
           base_gross_salary_from_api: emp.gross_salary || 0, // Store original API gross for recalculations
           days_paid: emp.days_paid ?? 0,
+          // Approved, unpaid bonuses and wage-request lines the backend already
+          // summed for this run. Kept separately so the per-shift bonus adds to
+          // it rather than overwriting it — see applyShiftBonus.
+          approved_bonus_from_api: bonus_pay,
           bonus_pay: bonus_pay,
           loan_deductions: loan_deductions,
           other_deductions: other_deductions, // Initialized to 0
@@ -621,23 +625,37 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
     );
   };
 
-  /** Set every row's bonus to the per-shift amount times the shifts they worked. */
+  /**
+   * Add the per-shift amount, times the shifts worked, ON TOP of whatever was
+   * already approved for this run.
+   *
+   * This used to overwrite bonus_pay, which silently destroyed approved
+   * bonuses: an employee owed R500 became R50 x shifts, and save_payroll_run
+   * then marked that R500 consumed, so it could never be paid on any later run.
+   * Computing from approved_bonus_from_api rather than from the current
+   * bonus_pay also keeps repeat presses idempotent.
+   */
   const applyShiftBonus = () => {
     const perShift = parseFloat(shiftBonus);
     if (!(perShift >= 0)) {
       toast({ title: 'Enter a bonus amount', variant: 'destructive' });
       return;
     }
+    let withApproved = 0;
     setPayRollInfo(prev =>
       prev.map(calc => {
-        const bonus = perShift * (calc.days_paid || 0);
+        const approved = calc.approved_bonus_from_api || 0;
+        if (approved > 0) withApproved += 1;
+        const bonus = approved + perShift * (calc.days_paid || 0);
         const gross = calc.base_gross_salary_from_api + bonus;
         return { ...calc, bonus_pay: bonus, gross_pay: gross, net_pay: gross - (calc.other_deductions || 0) };
       }),
     );
     toast({
       title: 'Shift bonus applied',
-      description: `R${perShift.toFixed(2)} per shift worked.`,
+      description: withApproved
+        ? `R${perShift.toFixed(2)} per shift worked, added on top of the approved bonus for ${withApproved} ${withApproved === 1 ? 'person' : 'people'}.`
+        : `R${perShift.toFixed(2)} per shift worked.`,
     });
   };
 
@@ -829,6 +847,21 @@ const RunPayrollFlowWeekend = ({ onBack, onComplete, approvedBatch, runType = 'w
                         className="w-24 h-8 text-sm"
                         placeholder="0.00"
                       />
+                      {/* Saving less than was approved still marks the whole
+                          approved bonus paid, so the difference is gone for
+                          good. Editing stays allowed — it just says so. */}
+                      {(calc?.approved_bonus_from_api || 0) > 0 && (
+                        (calc?.bonus_pay || 0) < (calc?.approved_bonus_from_api || 0) ? (
+                          <p className="mt-1 w-28 text-[11px] leading-tight text-orange-600">
+                            {formatCurrency(calc.approved_bonus_from_api)} approved — the
+                            difference will be marked paid and cannot be recovered.
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            incl. {formatCurrency(calc.approved_bonus_from_api)} approved
+                          </p>
+                        )
+                      )}
                     </TableCell>
                     <TableCell className="font-medium">{Math.floor(calc.total_worked_hours || 0)}h</TableCell>
                     {/* <TableCell className="text-orange-600">{Math.floor(calc.total_weekend_hours || 0)}h</TableCell> */}

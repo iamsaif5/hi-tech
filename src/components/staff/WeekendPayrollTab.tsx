@@ -499,6 +499,11 @@ const WeekendPayrollTab = ({ onRunPayroll, runType = 'weekend' }: PayrollTabProp
 
   const currentDraft = payrollHistory.find(p => p.id === 'current-period') || currentPeriodCalculations;
 
+  // The period of the most recent run shown. Without it the summary dialog's
+  // "Current period" option stays permanently disabled, so only Custom and
+  // All-time worked.
+  const latestRun = filteredPayrolls.find((p: any) => p.start_date && p.end_date);
+
   return (
     <div className="space-y-6">
       {/* Current Draft Payroll */}
@@ -578,7 +583,11 @@ const WeekendPayrollTab = ({ onRunPayroll, runType = 'weekend' }: PayrollTabProp
                 Run Payroll
               </Button>
             )}
-            <PayrollSummaryDialog runType={runType} />
+            <PayrollSummaryDialog
+              runType={runType}
+              currentStart={latestRun?.start_date}
+              currentEnd={latestRun?.end_date}
+            />
             <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50">
               <Filter className="h-4 w-4 mr-2" />
               Filter

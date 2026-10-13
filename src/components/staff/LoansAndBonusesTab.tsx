@@ -136,11 +136,7 @@ const LoansAndBonusesTab = () => {
   const [loanFiles, setLoanFiles] = useState<File[]>([]);
   const [savingLoan, setSavingLoan] = useState(false);
 
-  // Loans are for permanent staff only, so casuals never reach the picker.
-  // Absconded staff are left out too — there is no payroll to recover from.
-  const loanEligibleStaff = (staffMembers || []).filter(
-    (s: any) => s.employee_type === 'permanent' && !s.is_absconded,
-  );
+
 
   const [loanForm, setLoanForm] = useState({
     employee_id: '',
@@ -491,9 +487,6 @@ const LoansAndBonusesTab = () => {
                 <form onSubmit={handleLoanSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="employee_id">Staff Member</Label>
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Permanent staff only — casuals cannot take a loan.
-                    </p>
                     <Popover open={loanStaffPickerOpen} onOpenChange={setLoanStaffPickerOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
@@ -507,8 +500,6 @@ const LoansAndBonusesTab = () => {
                             {loanForm.employee_id
                               ? staffMembers?.find((s) => s.id.toString() === loanForm.employee_id)?.full_name
                               : "Select staff member"}
-                            {/* Looked up in the unfiltered list so an existing
-                                casual loan still shows whose it is. */}
                           </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -517,9 +508,9 @@ const LoansAndBonusesTab = () => {
                         <Command>
                           <CommandInput placeholder="Search staff member..." />
                           <CommandList>
-                            <CommandEmpty>No permanent staff member found.</CommandEmpty>
+                            <CommandEmpty>No staff member found.</CommandEmpty>
                             <CommandGroup>
-                              {loanEligibleStaff.map((staff) => (
+                              {staffMembers?.map((staff) => (
                                 <CommandItem
                                   key={staff.id}
                                   value={staff.full_name}

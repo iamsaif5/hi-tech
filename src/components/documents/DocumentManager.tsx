@@ -156,19 +156,23 @@ const DocumentManager: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-0">
       <Label>{label}</Label>
 
       {queueing && queued.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="space-y-1 min-w-0">
           {queued.map((file, i) => (
             <li
               key={`${file.name}-${i}`}
-              className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5"
+              className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded px-3 py-1.5 min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
+              {/* min-w-0 is load-bearing: a flex item defaults to
+                  min-width:auto and refuses to shrink below its content, so
+                  `truncate` never engages and a long file name widens the
+                  whole dialog instead of ellipsising. */}
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <FileText className="h-4 w-4 text-gray-400 shrink-0" />
-                <span className="truncate">{file.name}</span>
+                <span className="truncate" title={file.name}>{file.name}</span>
                 <span className="text-gray-400 text-xs shrink-0">
                   ({(file.size / 1024).toFixed(0)} KB)
                 </span>
@@ -189,19 +193,20 @@ const DocumentManager: React.FC<Props> = ({
       {isLoading && ownerId ? (
         <p className="text-xs text-muted-foreground">Loading documents…</p>
       ) : docs.length ? (
-        <ul className="space-y-1">
+        <ul className="space-y-1 min-w-0">
           {docs.map(doc => (
             <li
               key={doc.id}
-              className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5"
+              className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded px-3 py-1.5 min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <FileText className="h-4 w-4 text-gray-400 shrink-0" />
                 <a
                   href={doc.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="truncate text-blue-600 hover:underline"
+                  title={doc.file_name}
                 >
                   {doc.file_name}
                 </a>
@@ -210,7 +215,12 @@ const DocumentManager: React.FC<Props> = ({
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-gray-400 text-xs hidden sm:inline">
+                {/* Capped as well — a long name plus a long uploader name was
+                    enough to push the row wider than the dialog. */}
+                <span
+                  className="text-gray-400 text-xs hidden sm:inline truncate max-w-[11rem]"
+                  title={`${doc.uploaded_by_name} · ${fmtDateTime(doc.uploaded_at)}`}
+                >
                   {doc.uploaded_by_name} · {fmtDateTime(doc.uploaded_at)}
                 </span>
                 <a

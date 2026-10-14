@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, MessageSquare, Clock, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Clock, ChevronDown, ChevronUp, FileDown, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,7 @@ import { postData, downloadFile } from '@/lib/Api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import CommentsModal from '@/components/CommentsModal';
+import ApprovalDocuments from '@/components/approvals/ApprovalDocuments';
 
 interface ApprovalRequest {
   id: number;
@@ -97,6 +98,17 @@ const ApprovalCard = ({
               )}
             </span>
             <StatusBadge status={approval.status} />
+            {/* Flagged on the collapsed card so an approver is not asked to
+                decide without noticing there is supporting paperwork. */}
+            {(detail?.document_count ?? 0) > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[11px] text-amber-800"
+                title="Supporting documents attached — expand to view"
+              >
+                <Paperclip className="h-3 w-3" />
+                {detail.document_count}
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Submitted by <strong>{approval.submitted_by_name || approval.submitted_by_email}</strong>
@@ -180,6 +192,8 @@ const ApprovalCard = ({
               <DetailRow label="Loan Type" value={detail.loan_type} />
               <DetailRow label="Amount" value={`R${detail.amount}`} />
               <DetailRow label="Term" value={`${detail.term_duration} × ${detail.term_type}`} />
+              {detail.notes && <DetailRow label="Notes" value={detail.notes} />}
+              <ApprovalDocuments kind="loan" id={detail.id} count={detail.document_count} />
             </>
           )}
           {approval.bonus_detail && (
@@ -187,6 +201,19 @@ const ApprovalCard = ({
               <DetailRow label="Staff" value={detail.staff_name} />
               <DetailRow label="Amount" value={`R${detail.amount}`} />
               <DetailRow label="Reason" value={detail.reason} />
+              {detail.target_payroll && (
+                <DetailRow
+                  label="Paid on"
+                  value={detail.target_payroll === 'weekend' ? 'Off Weekend payroll' : 'Fortnight payroll'}
+                />
+              )}
+              {detail.recurrence_periods && (
+                <DetailRow
+                  label="Repeats"
+                  value={`${detail.recurrence_periods} pay runs${detail.per_shift ? ', per shift worked' : ''}`}
+                />
+              )}
+              <ApprovalDocuments kind="bonus" id={detail.id} count={detail.document_count} />
             </>
           )}
           {approval.payroll_batch_detail && (

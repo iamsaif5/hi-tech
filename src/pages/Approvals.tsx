@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import CommentsModal from '@/components/CommentsModal';
 import ApprovalDocuments from '@/components/approvals/ApprovalDocuments';
+import WageRequestLines from '@/components/approvals/WageRequestLines';
 
 interface ApprovalRequest {
   id: number;
@@ -245,7 +246,25 @@ const ApprovalCard = ({
               <DetailRow label="Staff count" value={detail.line_count} />
               <DetailRow label="Total" value={`R${parseFloat(detail.total_amount).toFixed(2)}`} />
               {detail.target_payroll && (
-                <DetailRow label="Target payroll" value={detail.target_payroll} />
+                <DetailRow
+                  label="Paid on"
+                  value={detail.target_payroll === 'weekend' ? 'Off Weekend payroll' : 'Fortnight payroll'}
+                />
+              )}
+              {!detail.target_payroll && (
+                <DetailRow label="Paid" value="Standalone — not through a payroll run" />
+              )}
+              {/* Agreeing to a standing arrangement is agreeing to it every
+                  period, which the card never said. */}
+              {detail.is_recurring && (
+                <DetailRow
+                  label="Repeats"
+                  value={
+                    detail.active_until
+                      ? `Every fortnight, until ${detail.active_until}`
+                      : 'Every fortnight, until an admin ends it'
+                  }
+                />
               )}
               {detail.bonus_reason && (
                 <DetailRow label="Bonus reason" value={detail.bonus_reason.replace(/_/g, ' ')} />
@@ -253,6 +272,11 @@ const ApprovalCard = ({
               {detail.custom_reason && (
                 <DetailRow label="Reason" value={detail.custom_reason} />
               )}
+              <WageRequestLines
+                batchId={detail.id}
+                open={expanded}
+                expectedCount={detail.line_count}
+              />
               {approval.status === 'approved' && (
                 <div className="pt-1">
                   <Button

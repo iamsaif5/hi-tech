@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import CommentsModal from '@/components/CommentsModal';
 import ApprovalDocuments from '@/components/approvals/ApprovalDocuments';
-import WageRequestLines from '@/components/approvals/WageRequestLines';
+import ApprovalLines from '@/components/approvals/ApprovalLines';
 
 interface ApprovalRequest {
   id: number;
@@ -26,6 +26,7 @@ interface ApprovalRequest {
   reviewed_by_email: string | null;
   loan_detail: any;
   bonus_detail: any;
+  bonus_batch_detail: any;
   payroll_batch_detail: any;
   wage_request_batch_detail: any;
   created_at: string;
@@ -83,7 +84,8 @@ const ApprovalCard = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const detail = approval.loan_detail || approval.bonus_detail || approval.payroll_batch_detail || approval.wage_request_batch_detail;
+  const detail = approval.loan_detail || approval.bonus_detail || approval.bonus_batch_detail
+    || approval.payroll_batch_detail || approval.wage_request_batch_detail;
 
   const threadLabel = `${TYPE_LABELS[approval.request_type] ?? approval.request_type} — ${approval.submitted_by_name || approval.submitted_by_email}`;
 
@@ -217,6 +219,32 @@ const ApprovalCard = ({
               <ApprovalDocuments kind="bonus" id={detail.id} count={detail.document_count} />
             </>
           )}
+          {approval.bonus_batch_detail && (
+            <>
+              <DetailRow label="Staff count" value={detail.line_count} />
+              <DetailRow label="Total" value={`R${parseFloat(detail.total_amount).toFixed(2)}`} />
+              <DetailRow
+                label="Paid on"
+                value={detail.target_payroll === 'weekend' ? 'Off Weekend payroll' : 'Fortnight payroll'}
+              />
+              {detail.bonus_reason && (
+                <DetailRow label="Bonus reason" value={detail.bonus_reason.replace(/_/g, ' ')} />
+              )}
+              {detail.reason && <DetailRow label="Reason" value={detail.reason} />}
+              {detail.recurrence_periods && (
+                <DetailRow
+                  label="Repeats"
+                  value={`${detail.recurrence_periods} pay runs${detail.per_shift ? ', per shift worked' : ''}`}
+                />
+              )}
+              <ApprovalLines
+                kind="bonus"
+                batchId={detail.id}
+                open={expanded}
+                expectedCount={detail.line_count}
+              />
+            </>
+          )}
           {approval.payroll_batch_detail && (
             <>
               <DetailRow label="Type" value={detail.run_type} />
@@ -272,7 +300,8 @@ const ApprovalCard = ({
               {detail.custom_reason && (
                 <DetailRow label="Reason" value={detail.custom_reason} />
               )}
-              <WageRequestLines
+              <ApprovalLines
+                kind="wage"
                 batchId={detail.id}
                 open={expanded}
                 expectedCount={detail.line_count}

@@ -203,27 +203,27 @@ const NewPaymentFlow: React.FC<Props> = ({ paymentType, onBack, onComplete }) =>
     setConfirmOpen(false);
     try {
       if (isBonus) {
-        // Bonuses are individual records on the Bonus model, each with its own
-        // approval, rather than one batch.
-        for (const row of Object.values(selected)) {
-          await postData({
-            url: 'staff/bonuses/',
-            data: {
+        // One submission, one approval, however many people are on it. This
+        // used to post a bonus per person, so a bonus for three people
+        // reached the approver as three unrelated requests.
+        await postData({
+          url: 'staff/bonuses/batch/',
+          data: {
+            target_payroll: targetPayroll,
+            bonus_reason: bonusReason,
+            reason: BONUS_REASONS.find(r => r.value === bonusReason)?.label || bonusReason,
+            recurrence_periods: repeatPeriods ? Number(repeatPeriods) : null,
+            per_shift: perShift,
+            // The operator's choice, except where it cannot apply: an
+            // off-weekend run never reaches SimplePay and a casual's pay
+            // stays in the app. The backend enforces both per person.
+            sync_to_simplepay: syncToSimplePay && !offWeekend,
+            lines: Object.values(selected).map(row => ({
               staff_member: row.staff_id,
               amount: parseFloat(row.amount),
-              reason: BONUS_REASONS.find(r => r.value === bonusReason)?.label || bonusReason,
-              target_payroll: targetPayroll,
-              bonus_reason: bonusReason,
-              recurrence_periods: repeatPeriods ? Number(repeatPeriods) : null,
-              per_shift: perShift,
-              // The operator's choice, except where it cannot apply: an
-              // off-weekend run never reaches SimplePay and a casual's pay
-              // stays in the app. The backend enforces both regardless.
-              sync_to_simplepay:
-                syncToSimplePay && !offWeekend && row.employee_type !== 'casual',
-            },
-          });
-        }
+            })),
+          },
+        });
       } else {
         const payload: any = {
           payment_type: paymentType,

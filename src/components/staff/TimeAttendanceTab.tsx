@@ -29,17 +29,6 @@ import { format } from 'date-fns';
 import useFetch from '@/hooks/useFetch';
 import { fetchData } from '@/lib/Api';
 
-/**
- * Hides the Upload Hours control and its dialog.
- *
- * Hours entered this way carry no record of who entered them, and they feed
- * straight into a pay run. The control is hidden while attendance entry is
- * reviewed. Flip to true to restore it.
- *
- * UI only - the backend endpoints are unchanged and still accept requests.
- */
-const SHOW_MANUAL_HOURS_ENTRY = false;
-
 const TimeAttendanceTab = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(2);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -421,7 +410,6 @@ const TimeAttendanceTab = () => {
         <h3 className="text-lg font-medium text-gray-900">Time & Attendance</h3>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-600">Pay Period: {selectedPeriodData?.dates || 'Jun 18-Jul 1'}, 2025</span>
-          {SHOW_MANUAL_HOURS_ENTRY && (
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -525,7 +513,6 @@ const TimeAttendanceTab = () => {
               </div>
             </DialogContent>
           </Dialog>
-          )}
         </div>
       </div>
 

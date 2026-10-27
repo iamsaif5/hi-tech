@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { generatePayrollPDF, PayrollSummaryData } from '@/utils/payrollPDF';
 import { fetchEntries, downloadFile, deleteData, fetchData } from '@/lib/Api';
 import { generateAccountingPDF } from '@/lib/accountingPDF';
-import { hasSimplePayAccounting, type AccountingData } from '@/lib/accountingRows';
+import { hasSimplePayAccounting, NON_SIMPLEPAY_RUN_TYPES, type AccountingData } from '@/lib/accountingRows';
 import AccountingSummaryPrint from '@/components/staff/AccountingSummaryPrint';
 import { useQuery } from '@tanstack/react-query';
 import useFetch from '@/hooks/useFetch';
@@ -425,14 +425,18 @@ const WeekendPayrollTab = ({ onRunPayroll, runType = 'weekend' }: PayrollTabProp
     // Pull the SimplePay accounting report so it prints on the same sheet as
     // the payroll summary. A failure must never block the print — the summary
     // still goes out, just without the accounting section.
+    //
+    // Nothing from this tab is ever sent to SimplePay, so the report is not
+    // requested at all. The backend matches a batch to a SimplePay run on end
+    // date alone, which on 23-25 Oct 2026 attached RANDM's own R222,369.63 run
+    // to a R47,188.86 weekend batch and printed a variance between the two.
     let accounting: AccountingData | null = null;
-    if (hasSimplePayAccounting(payroll.factory)) {
+    if (hasSimplePayAccounting(payroll.factory, payroll.run_type ?? runType)) {
       try {
         accounting = await fetchData(`atg/attendance/payroll-accounting-info/?batch_id=${payroll.id}`);
       } catch {
-        // Expected whenever SimplePay has no run for this period (weekend runs
-        // currently have none). Print the summary without the section rather
-        // than interrupting with a toast behind the print dialog.
+        // SimplePay has no run for this period. Print the summary without the
+        // section rather than interrupting with a toast behind the print dialog.
         console.warn(`No SimplePay accounting report for batch ${payroll.id}`);
       }
     }
@@ -813,9 +817,11 @@ const WeekendPayrollTab = ({ onRunPayroll, runType = 'weekend' }: PayrollTabProp
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              {hasSimplePayAccounting(printBatch.factory)
-                ? 'No separate SimplePay accounting run exists for this period, so the accounting report could not be shown.'
-                : 'This company is not linked to SimplePay, so no accounting report is available.'}
+              {NON_SIMPLEPAY_RUN_TYPES.includes(printBatch.run_type ?? runType)
+                ? 'This payroll run is not sent to SimplePay, so no accounting report applies.'
+                : hasSimplePayAccounting(printBatch.factory, printBatch.run_type ?? runType)
+                  ? 'No separate SimplePay accounting run exists for this period, so the accounting report could not be shown.'
+                  : 'This company is not linked to SimplePay, so no accounting report is available.'}
             </p>
             </>)}
             {printAccounting && (

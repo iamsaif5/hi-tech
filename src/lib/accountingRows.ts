@@ -16,7 +16,25 @@
  */
 export const SIMPLEPAY_FACTORIES = ['hitec', 'RANDM'];
 
-export function hasSimplePayAccounting(factory?: string | null): boolean {
+/**
+ * Run types that are never pushed to SimplePay. Mirrors
+ * PayrollBatch.NON_SIMPLEPAY_RUN_TYPES in hitec-backend/staff/models.py.
+ *
+ * An accounting report describes a run SimplePay actually holds, so for these
+ * there is nothing of ours to report on. Worse, the backend matches a batch to
+ * a SimplePay run on end date alone, so an off-weekend batch closing on the
+ * same day as the company's own SimplePay period pulls in that unrelated run
+ * and prints a variance against it. RANDM, 23-25 Oct 2026, is the case that
+ * showed it: a R47,188.86 weekend batch printed beside a R222,369.63 SimplePay
+ * run created before the Saturday had even been worked.
+ */
+export const NON_SIMPLEPAY_RUN_TYPES = ['weekend', 'special', 'monthly'];
+
+export function hasSimplePayAccounting(
+  factory?: string | null,
+  runType?: string | null,
+): boolean {
+  if (runType && NON_SIMPLEPAY_RUN_TYPES.includes(runType)) return false;
   return !!factory && SIMPLEPAY_FACTORIES.includes(factory);
 }
 
